@@ -1,0 +1,14 @@
+[submodule "external/arboricity"]
+	path = external/arboricity
+	url = https://github.com/pawelswoboda/arboricity.git
+[submodule "external/opengm"]
+	path = external/opengm
+	url = https://github.com/opengm/opengm.git
+[submodule "external/PEGTL"]
+	path = external/PEGTL
+	url = https://github.com/taocpp/PEGTL.git
+	branch = 1.3.x
+[submodule "external/LP_MP"]
+	path = external/LP_MP
+	url = https://github.com/pawelswoboda/LP_MP.git
+	branch = frank_wolfe
