@@ -7,13 +7,15 @@ add_compile_options(-std=c++17)
 # compiler options
 add_definitions(-march=native)
 
-include_directories(include)
-include_directories(external)
 add_subdirectory(external/LP_MP)
-include_directories(external/arboricity)
-add_subdirectory(external/arboricity)
-include_directories(external/PEGTL)
-include_directories(external/opengm/include)
+
+add_library(LP_MP-MRF INTERFACE)
+target_include_directories(LP_MP-MRF INTERFACE include)
+target_include_directories(LP_MP-MRF INTERFACE external)
+target_include_directories(LP_MP-MRF INTERFACE external/arboricity)
+target_include_directories(LP_MP-MRF INTERFACE external/PEGTL)
+target_include_directories(LP_MP-MRF INTERFACE external/opengm/include)
+target_link_libraries(LP_MP-MRF INTERFACE LP_MP)
 
 # for opengm
 find_package(HDF5 1.8.15 REQUIRED)
