@@ -293,6 +293,7 @@ public:
       return second_smallest - smallest;
    } 
    
+   INDEX size() const { return dim1()*dim2(); }
    INDEX dim1() const { return left_msg_.size(); }
    INDEX dim2() const { return right_msg_.size(); }
    INDEX dim(const INDEX d) const 
@@ -357,51 +358,45 @@ public:
 
    template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar( primal_[0], primal_[1] ); }
    //template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar( cereal::binary_data( pairwise_, sizeof(REAL)*(size()+dim1()+dim2()) ) ); }
-   template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar( pairwise_, left_msg_, right_msg_ ); }
+   template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) { ar( left_msg_, right_msg_, pairwise_ ); }
 
-   auto export_variables() { return std::tie( pairwise_, left_msg_, right_msg_ ); }
+   auto export_variables() { return std::tie(left_msg_, right_msg_, pairwise_); }
 
    vector<REAL> min_marginal_1() const
    {
       auto min = pairwise_.min1(right_msg_);
       min += left_msg_;
-      return min;
-   }
-   /*
-   template<typename VECTOR>
-   void min_marginal_1(VECTOR& m) const
-   {
-      assert(m.size() == dim1());
-      assert(false); // program efficient version
-      std::fill(m.begin(), m.end(), std::numeric_limits<REAL>::infinity());
+#ifndef NDEBUG
+      vector<REAL> msg_test(dim1(), std::numeric_limits<REAL>::infinity());
       for(INDEX x1=0; x1<dim1(); ++x1) {
           for(INDEX x2=0; x2<dim2(); ++x2) {
-             m[x1] = std::min(m[x1],(*this)(x1,x2));
+             msg_test[x1] = std::min(msg_test[x1],(*this)(x1,x2));
           }
-       } 
+      } 
+      for(INDEX i=0; i<dim1(); ++i) {
+        assert(std::abs(msg_test[i] - min[i]) <= eps || msg_test[i] == min[i]);
+      }
+#endif
+      return min;
    }
-   */
 
    vector<REAL> min_marginal_2() const
    {
       auto min = pairwise_.min2(left_msg_);
       min += right_msg_;
+#ifndef NDEBUG
+      vector<REAL> msg_test(dim2(), std::numeric_limits<REAL>::infinity());
+      for(INDEX x1=0; x1<dim1(); ++x1) {
+        for(INDEX x2=0; x2<dim2(); ++x2) {
+          msg_test[x2] = std::min(msg_test[x2],(*this)(x1,x2));
+        }
+      } 
+      for(INDEX i=0; i<dim2(); ++i) {
+        assert(std::abs(msg_test[i] - min[i]) <= eps || msg_test[i] == min[i]);
+      }
+#endif 
       return min; 
    }
-   /*
-   template<typename VECTOR>
-   void min_marginal_2(VECTOR& m) const
-   {
-      assert(m.size() == dim2());
-      assert(false); // program efficient version
-      std::fill(m.begin(), m.end(), std::numeric_limits<REAL>::infinity());
-      for(INDEX x1=0; x1<dim1(); ++x1) {
-          for(INDEX x2=0; x2<dim2(); ++x2) {
-             m[x2] = std::min(m[x2],(*this)(x1,x2));
-          }
-       } 
-   }
-   */
 
    template<typename ARRAY>
    void apply(ARRAY& a) const
@@ -412,69 +407,49 @@ public:
       a[dim1()*dim2() + dim1() + primal_[1]]; 
    }
 
-#ifdef WITH_SAT
-   template<typename SAT_SOLVER>
-   void construct_sat_clauses(SAT_SOLVER& s) const
+   template<typename SOLVER>
+   void construct_constraints(SOLVER& s, typename SOLVER::vector left_unary_variables, typename SOLVER::vector right_unary_variables, typename SOLVER::matrix pairwise_variables) const
    {
-      auto left_unaries = s.add_literal_vector(dim1());
-      auto right_unaries = s.add_literal_vector(dim2());
-      auto pairwise = s.add_literal_matrix(dim1(), dim2());
-
       for(INDEX x1=0; x1<dim1(); ++x1) {
-         auto slice = pairwise.slice_left(x1);
-         auto c = s.add_at_most_one_constraint(slice.begin(), slice.end());
-         s.make_equal(c, left_unaries[x1]);
+         auto slice = pairwise_variables.slice_left(x1);
+         auto c = s.max(slice.begin(), slice.end());
+         s.make_equal(c, left_unary_variables[x1]);
       }
 
       for(INDEX x2=0; x2<dim2(); ++x2) {
-         auto slice = pairwise.slice_right(x2);
-         auto c = s.add_at_most_one_constraint(slice.begin(), slice.end());
-         s.make_equal(c, right_unaries[x2]);
+         auto slice = pairwise_variables.slice_right(x2);
+         auto c = s.max(slice.begin(), slice.end());
+         s.make_equal(c, right_unary_variables[x2]);
       }
-
-      // is superfluous: summation constraints must be active due to unary simplex factors
-      //add_simplex_constraint_sat(sat_var.begin(), sat_var.begin()+dim1());
-      //add_simplex_constraint_sat(sat_var.begin()+dim1(), sat_var.begin()+dim1()+dim2());
    }
 
-   template<typename VEC>
-   void reduce_sat(VEC& assumptions, const REAL th, sat_var begin) const
+   //template<typename VEC>
+   //void reduce_sat(VEC& assumptions, const REAL th, sat_var begin) const
+   //{
+   //   sat_literal_vector left_unaries(dim1());
+   //   sat_literal_vector right_unaries(dim2());
+   //   sat_literal_matrix pairwise(dim1(),dim2());
+   //   load_sat_literals(begin, left_unaries, right_unaries, pairwise);
+//
+//      const REAL lb = LowerBound();
+//      for(INDEX x1=0; x1<this->dim1(); ++x1) {
+//         for(INDEX x2=0; x2<this->dim2(); ++x2) {
+//            if((*this)(x1,x2) > lb + th) { 
+//               assumptions.push_back(-pairwise(x1,x2));
+//            }
+//         }
+//      } 
+//   }
+
+   template<typename SOLVER>
+   void convert_primal(SOLVER& s, typename SOLVER::vector left_unary_variables, typename SOLVER::vector right_unary_variables, typename SOLVER::matrix pairwise_variables)
    {
-      sat_literal_vector left_unaries(dim1());
-      sat_literal_vector right_unaries(dim2());
-      sat_literal_matrix pairwise(dim1(),dim2());
-      load_sat_literals(begin, left_unaries, right_unaries, pairwise);
-
-      const REAL lb = LowerBound();
-      for(INDEX x1=0; x1<this->dim1(); ++x1) {
-         for(INDEX x2=0; x2<this->dim2(); ++x2) {
-            if((*this)(x1,x2) > lb + th) { 
-               assumptions.push_back(-pairwise(x1,x2));
-            }
-         }
-      } 
+     primal_[0] = s.first_active(left_unary_variables);
+     primal_[1] = s.first_active(right_unary_variables);
+     auto pairwise_sol = s.first_active(pairwise_variables);
+     assert(pairwise_sol[0] == primal_[0]);
+     assert(pairwise_sol[1] == primal_[1]);
    }
-
-   template<typename SAT_SOLVER>
-   void convert_primal(SAT_SOLVER& sat, sat_var first)
-   {
-      sat_literal_vector left_unaries(dim1());
-      sat_literal_vector right_unaries(dim2());
-      sat_literal_matrix pairwise(dim1(),dim2());
-      load_sat_literals(first, left_unaries, right_unaries, pairwise);
-
-      for(INDEX x1=0; x1<this->dim1(); ++x1) {
-         if(sat.solution(left_unaries[x1])) {
-            primal_[0] = x1;
-         } 
-      }
-      for(INDEX x2=0; x2<this->dim2(); ++x2) {
-         if(sat.solution(right_unaries[x2])) {
-            primal_[1] = x2;
-         } 
-      }
-   }
-#endif
 
    const std::array<INDEX,2>& primal() const { return primal_; }
    std::array<INDEX,2>& primal() { return primal_; }
@@ -490,36 +465,24 @@ private:
 // factor assumes that triplet potentials is empty and holds only messages to pairwise factors, i.e. is latently factorizable
 class SimpleTighteningTernarySimplexFactor : public tensor3_expression<REAL, SimpleTighteningTernarySimplexFactor> {
 public:
-   SimpleTighteningTernarySimplexFactor(const INDEX _dim1, const INDEX _dim2, const INDEX _dim3) : dim_({_dim1,_dim2,_dim3}) 
-   {
-      const INDEX size = dim1()*dim2() + dim1()*dim3() + dim2()*dim3();
-      
-      msg12_ = global_real_block_allocator.allocate(size);
-      assert(msg12_ != nullptr);
-      msg13_ = msg12_ + dim1()*dim2();
-      msg23_ = msg13_ + dim1()*dim3();
-      std::fill(msg12_, msg12_ + size, 0.0);
-   }
-   ~SimpleTighteningTernarySimplexFactor() {
-      global_real_block_allocator.deallocate(msg12_,1);
-   }
-   SimpleTighteningTernarySimplexFactor(const SimpleTighteningTernarySimplexFactor& o) : dim_(o.dim_) {
-      const INDEX size = dim1()*dim2() + dim1()*dim3() + dim2()*dim3();
-      
-      msg12_ = global_real_block_allocator.allocate(size);
-      assert(msg12_ != nullptr);
-      msg13_ = msg12_ + dim1()*dim2();
-      msg23_ = msg13_ + dim1()*dim3();
-      for(INDEX i=0; i<dim1()*dim2(); ++i) { msg12_[i] = o.msg12_[i]; }
-      for(INDEX i=0; i<dim1()*dim3(); ++i) { msg13_[i] = o.msg13_[i]; }
-      for(INDEX i=0; i<dim2()*dim3(); ++i) { msg23_[i] = o.msg23_[i]; }
-   }
+   SimpleTighteningTernarySimplexFactor(const INDEX _dim1, const INDEX _dim2, const INDEX _dim3) : 
+     msg12(_dim1, _dim2, 0.0),
+     msg13(_dim1, _dim3, 0.0),
+     msg23(_dim2, _dim3, 0.0)
+   {}
+   /*
+   SimpleTighteningTernarySimplexFactor(const SimpleTighteningTernarySimplexFactor& o) : 
+     msg12_(o.msg12_),
+     msg13_(o.msg13_),
+     msg23_(o.msg23_)
+  {}
    void operator=(const SimpleTighteningTernarySimplexFactor& o) {
       assert(dim1() == o.dim1() && dim2() == o.dim2() && dim3() == o.dim3());
       for(INDEX i=0; i<dim1()*dim2(); ++i) { msg12_[i] = o.msg12_[i]; }
       for(INDEX i=0; i<dim1()*dim3(); ++i) { msg13_[i] = o.msg13_[i]; }
       for(INDEX i=0; i<dim2()*dim3(); ++i) { msg23_[i] = o.msg23_[i]; }
    }
+   */
 
    REAL LowerBound() const {
       REAL lb = std::numeric_limits<REAL>::infinity();
@@ -616,18 +579,18 @@ public:
 
    INDEX size() const { return dim1()*dim2()*dim3(); }
 
-   INDEX dim(const INDEX d) const { assert(d<3); return dim_[d]; }
-   INDEX dim1() const { return dim_[0]; }
-   INDEX dim2() const { return dim_[1]; }
-   INDEX dim3() const { return dim_[2]; }
-
-   REAL msg12(const INDEX x1, const INDEX x2) const { assert(x1<dim1() && x2<dim2()); return msg12_[x1*dim2() + x2]; }
-   REAL msg13(const INDEX x1, const INDEX x3) const { assert(x1<dim1() && x3<dim3()); return msg13_[x1*dim3() + x3]; }
-   REAL msg23(const INDEX x2, const INDEX x3) const { assert(x2<dim2() && x3<dim3()); return msg23_[x2*dim3() + x3]; }
-
-   REAL& msg12(const INDEX x1, const INDEX x2) { assert(x1<dim1() && x2<dim2()); return msg12_[x1*dim2() + x2]; }
-   REAL& msg13(const INDEX x1, const INDEX x3) { assert(x1<dim1() && x3<dim3()); return msg13_[x1*dim3() + x3]; }
-   REAL& msg23(const INDEX x2, const INDEX x3) { assert(x2<dim2() && x3<dim3()); return msg23_[x2*dim3() + x3]; }
+   INDEX dim(const INDEX d) const 
+   { 
+     assert(d<3);   
+     switch (d) {
+       case 0 : return dim1(); break;
+       case 1 : return dim2(); break;
+       case 2 : return dim3(); break;
+     }
+   }
+   INDEX dim1() const { return msg12.dim1(); }
+   INDEX dim2() const { return msg23.dim1(); }
+   INDEX dim3() const { return msg13.dim2(); }
 
    void init_primal() {
       primal_[0] = dim1();
@@ -637,116 +600,86 @@ public:
    template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(primal_); }
    template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) 
    { 
-      //ar( cereal::binary_data( msg12_, sizeof(REAL)*(dim1()*dim2()) ) );
-      //ar( cereal::binary_data( msg13_, sizeof(REAL)*(dim1()*dim3()) ) );
-      //ar( cereal::binary_data( msg23_, sizeof(REAL)*(dim2()*dim3()) ) );
-      ar( binary_data<REAL>( msg12_, dim1()*dim2() ) );
-      ar( binary_data<REAL>( msg13_, dim1()*dim3() ) );
-      ar( binary_data<REAL>( msg23_, dim2()*dim3() ) );
+      ar( msg12, msg13, msg23 );
    }
 
-   //auto export_variables() { return std::tie( binary_data<REAL>( msg12_, dim1()*dim2() ), binary_data<REAL>( msg13_, dim1()*dim3() ), binary_data<REAL>( msg23_, dim2()*dim3() ) ); }
+   auto export_variables() { return std::tie( msg12, msg13, msg23 ); }
 
-#ifdef WITH_SAT
-   template<typename SAT_SOLVER>
-   void construct_sat_clauses(SAT_SOLVER& s) const
+   template<typename SOLVER>
+   void construct_constraints(SOLVER& s, typename SOLVER::matrix msg12_vars, typename SOLVER::matrix msg13_vars, typename SOLVER::matrix msg23_vars) const
    {
-      auto literals_12 = s.add_literal_matrix(dim1(),dim2());
-      auto literals_13 = s.add_literal_matrix(dim1(),dim3());
-      auto literals_23 = s.add_literal_matrix(dim2(),dim3());
-      auto literals_123 = s.add_literal_tensor(dim1(),dim2(),dim3());
+      auto joint_vars = s.add_tensor(dim1(),dim2(),dim3());
 
       for(INDEX x1=0; x1<dim1(); ++x1) {
          for(INDEX x2=0; x2<dim2(); ++x2) {
-            auto slice = literals_123.slice12(x1,x2);
+            auto slice = joint_vars.slice12(x1,x2);
             auto slice_sum = s.add_at_most_one_constraint(slice.begin(), slice.end());
-            s.make_equal(literals_12(x1,x2), slice_sum);
+            s.make_equal(msg12_vars(x1,x2), slice_sum);
          }
       }
 
       for(INDEX x1=0; x1<dim1(); ++x1) {
          for(INDEX x3=0; x3<dim3(); ++x3) {
-            auto slice = literals_123.slice13(x1,x3);
+            auto slice = joint_vars.slice13(x1,x3);
             auto slice_sum = s.add_at_most_one_constraint(slice.begin(), slice.end());
-            s.make_equal(literals_13(x1,x3), slice_sum);
+            s.make_equal(msg13_vars(x1,x3), slice_sum);
          }
       }
 
       for(INDEX x2=0; x2<dim2(); ++x2) {
          for(INDEX x3=0; x3<dim3(); ++x3) {
-            auto slice = literals_123.slice23(x2,x3);
+            auto slice = joint_vars.slice23(x2,x3);
             auto slice_sum = s.add_at_most_one_constraint(slice.begin(), slice.end());
-            s.make_equal(literals_23(x2,x3), slice_sum);
+            s.make_equal(msg23_vars(x2,x3), slice_sum);
          }
       }
    }
 
-   template<typename VEC>
-   void reduce_sat(VEC& assumptions, const REAL th, sat_var begin) const
+//   template<typename VEC>
+//   void reduce_sat(VEC& assumptions, const REAL th, sat_var begin) const
+//   {
+//      sat_literal_matrix literals_12(dim1(),dim2());
+//      sat_literal_matrix literals_13(dim1(),dim3());
+//      sat_literal_matrix literals_23(dim2(),dim3());
+//      sat_literal_tensor literals_123(dim1(),dim2(),dim3());
+//      load_sat_literals(begin, literals_12, literals_13, literals_23, literals_123);
+//
+//      const REAL lb = LowerBound();
+//      for(INDEX x1=0; x1<this->dim1(); ++x1) {
+//         for(INDEX x2=0; x2<this->dim2(); ++x2) {
+//            for(INDEX x3=0; x3<this->dim3(); ++x3) {
+//               if((*this)(x1,x2,x3) > lb + th) { 
+//                  assumptions.push_back(-literals_123(x1,x2,x3));
+//               }
+//            }
+//         }
+//      } 
+//   }
+
+   template<typename SOLVER>
+   void convert_primal(SOLVER& s, typename SOLVER::matrix msg12_vars, typename SOLVER::matrix msg13_vars, typename SOLVER::matrix msg23_vars)
    {
-      sat_literal_matrix literals_12(dim1(),dim2());
-      sat_literal_matrix literals_13(dim1(),dim3());
-      sat_literal_matrix literals_23(dim2(),dim3());
-      sat_literal_tensor literals_123(dim1(),dim2(),dim3());
-      load_sat_literals(begin, literals_12, literals_13, literals_23, literals_123);
+     auto msg12_sol = s.first_active(msg12_vars);
+     auto msg13_sol = s.first_active(msg13_vars);
+     auto msg23_sol = s.first_active(msg23_vars);
+     assert(msg12_sol[0] == msg12_sol[0]);
+     assert(msg13_sol[1] == msg23_sol[1]);
+     assert(msg12_sol[1] == msg23_sol[0]);
 
-      const REAL lb = LowerBound();
-      for(INDEX x1=0; x1<this->dim1(); ++x1) {
-         for(INDEX x2=0; x2<this->dim2(); ++x2) {
-            for(INDEX x3=0; x3<this->dim3(); ++x3) {
-               if((*this)(x1,x2,x3) > lb + th) { 
-                  assumptions.push_back(-literals_123(x1,x2,x3));
-               }
-            }
-         }
-      } 
+     primal_[0] = msg12_sol[0];
+     primal_[1] = msg12_sol[1];
+     primal_[2] = msg13_sol[1];
    }
-
-   template<typename SAT_SOLVER>
-   void convert_primal(SAT_SOLVER& s, sat_var first)
-   {
-      sat_literal_matrix literals_12(dim1(),dim2());
-      sat_literal_matrix literals_13(dim1(),dim3());
-      sat_literal_matrix literals_23(dim2(),dim3());
-      sat_literal_tensor literals_123(dim1(),dim2(),dim3());
-      load_sat_literals(first, literals_12, literals_13, literals_23, literals_123);
-
-      for(INDEX x1=0; x1<this->dim1(); ++x1) {
-         for(INDEX x2=0; x2<this->dim2(); ++x2) {
-            if(s.solution(literals_12(x1,x2))) {
-               primal_[0] = x1;
-               primal_[1] = x2;
-            }
-         } 
-      }
-
-      for(INDEX x1=0; x1<dim1(); ++x1) {
-         for(INDEX x3=0; x3<dim3(); ++x3) {
-            if(s.solution(literals_13(x1,x3))) {
-               assert(primal_[0] == x1);
-               primal_[2] = x3;
-            }
-         }
-      }
-
-      for(INDEX x2=0; x2<dim2(); ++x2) {
-         for(INDEX x3=0; x3<dim3(); ++x3) {
-            if(s.solution(literals_23(x2,x3))) {
-               assert(primal_[1] == x2);
-               assert(primal_[2] == x3);
-            }
-         }
-      }
-   }
-#endif
 
    const std::array<INDEX,3>& primal() const { return primal_; }
    std::array<INDEX,3>& primal() { return primal_; }
 
+   matrix<REAL> msg12;
+   matrix<REAL> msg13;
+   matrix<REAL> msg23;
+
 protected:
    std::array<INDEX,3> primal_;
-   std::array<INDEX,3> dim_;
-   REAL *msg12_, *msg13_, *msg23_;
 };
 
 

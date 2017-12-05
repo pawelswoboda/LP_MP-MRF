@@ -70,9 +70,6 @@ int main()
    i[2] = "";
    i[3] = "-v";
    i[4] = "0";
-   Solver<FMC_SRMP_T,LP,StandardVisitor> s(5,i);
-   auto& mrf = s.template GetProblemConstructor<0>();
-   s.GetLP().set_reparametrization(LPReparametrizationMode::DampedUniform); // setting reparametrization mode to anisotropic leads to suboptimal fixed point
 
    matrix<REAL> negPotts2(2,2);
    negPotts2(0,0) = 1.0;
@@ -88,11 +85,14 @@ int main()
 
    // binary violated 4 cycle
    {
-      mrf.AddUnaryFactor({0,0});
-      mrf.AddUnaryFactor({0,0});
-      mrf.AddUnaryFactor({0,0});
-      mrf.AddUnaryFactor({0,0});
+     Solver<FMC_SRMP_T,LP,StandardVisitor> s(5,i);
+     auto& mrf = s.template GetProblemConstructor<0>();
+     s.GetLP().set_reparametrization(LPReparametrizationMode::DampedUniform); // setting reparametrization mode to anisotropic leads to suboptimal fixed point
 
+      mrf.AddUnaryFactor({0,0});
+      mrf.AddUnaryFactor({0,0});
+      mrf.AddUnaryFactor({0,0});
+      mrf.AddUnaryFactor({0,0});
       
       mrf.AddPairwiseFactor(0,1,negPotts2);
       mrf.AddPairwiseFactor(1,2,posPotts2);
@@ -113,6 +113,10 @@ int main()
 
    // binary violated 5 cycle
    {
+     Solver<FMC_SRMP_T,LP,StandardVisitor> s(5,i);
+     auto& mrf = s.template GetProblemConstructor<0>();
+     s.GetLP().set_reparametrization(LPReparametrizationMode::DampedUniform); // setting reparametrization mode to anisotropic leads to suboptimal fixed point
+
       mrf.AddUnaryFactor({0,0});
       mrf.AddUnaryFactor({0,0});
       mrf.AddUnaryFactor({0,0});
@@ -154,6 +158,10 @@ int main()
 
    // expanded k-ary cycle search 4-cycle
    {
+     Solver<FMC_SRMP_T,LP,StandardVisitor> s(5,i);
+     auto& mrf = s.template GetProblemConstructor<0>();
+     s.GetLP().set_reparametrization(LPReparametrizationMode::DampedUniform); // setting reparametrization mode to anisotropic leads to suboptimal fixed point
+
       mrf.AddUnaryFactor({0,0,0,0});
       mrf.AddUnaryFactor({0,0,0,0});
       mrf.AddUnaryFactor({0,0,0,0});
@@ -183,6 +191,10 @@ int main()
 
    // expanded k-ary cycle search 5-cycle
    {
+     Solver<FMC_SRMP_T,LP,StandardVisitor> s(5,i);
+     auto& mrf = s.template GetProblemConstructor<0>();
+     s.GetLP().set_reparametrization(LPReparametrizationMode::DampedUniform); // setting reparametrization mode to anisotropic leads to suboptimal fixed point
+
       mrf.AddUnaryFactor({0,0,0,0});
       mrf.AddUnaryFactor({0,0,0,0});
       mrf.AddUnaryFactor({0,0,0,0});

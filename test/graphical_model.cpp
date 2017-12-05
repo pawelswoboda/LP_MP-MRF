@@ -1,6 +1,6 @@
 #include "test.h"
 #include "graphical_model.h"
-#include "LP_sat.hxx"
+#include "LP_external_interface.hxx"
 #include "visitors/standard_visitor.hxx"
 
 
@@ -43,8 +43,6 @@ int main()
 {
    auto sat_solver_options = solver_options;
    sat_solver_options[12] = std::string("damped_uniform");
-   sat_solver_options.push_back("--satReductionMode");
-   sat_solver_options.push_back("static");
 
    // MAP-estimation for a model given in uai format
    {
@@ -90,7 +88,7 @@ int main()
    {
       using FMC = FMC_SRMP;
       using VisitorType = StandardVisitor;
-      using SolverType = MpRoundingSolver<Solver<FMC,LP_sat<LP>,VisitorType>>;
+      using SolverType = MpRoundingSolver<Solver<FMC,LP_external_solver<DD_ILP::sat_solver,LP>,VisitorType>>;
 
       SolverType s(sat_solver_options);
       auto& mrf = s.template GetProblemConstructor<0>();
@@ -116,7 +114,7 @@ int main()
    {
       using FMC = FMC_SRMP;
       using VisitorType = StandardVisitor;
-      using SolverType = MpRoundingSolver<Solver<FMC,LP_sat<LP>,VisitorType>>;
+      using SolverType = MpRoundingSolver<Solver<FMC,LP_external_solver<DD_ILP::sat_solver,LP>,VisitorType>>;
 
       SolverType s(sat_solver_options);
       auto& mrf = s.template GetProblemConstructor<0>();
@@ -256,7 +254,7 @@ int main()
 
       // SAT rounding
       {
-         using SatSolverType = MpRoundingSolver<Solver<FMC,LP_sat<LP>,VisitorType>>;
+         using SatSolverType = MpRoundingSolver<Solver<FMC,LP_external_solver<DD_ILP::sat_solver,LP>,VisitorType>>;
 
          SatSolverType s_sat(solver_options);
          auto& mrf_sat = s_sat.template GetProblemConstructor<0>();
