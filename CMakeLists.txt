@@ -19,8 +19,10 @@ target_link_libraries(LP_MP-MRF INTERFACE LP_MP)
 
 # for opengm
 find_package(HDF5 1.8.15 REQUIRED)
-include_directories (${HDF5_INCLUDE_DIR})
-add_definitions(${HDF5_DEFINITIONS})
+add_library(HDF5 INTERFACE)
+target_include_directories(HDF5 INTERFACE ${HDF5_INCLUDE_DIR})
+target_link_libraries(HDF5 INTERFACE ${HDF5_LIBRARIES})
+target_compile_definitions(HDF5 INTERFACE ${HDF5_DEFINITIONS})
 message(STATUS ${HDF5_LIBRARIES})
 message(STATUS ${HDF5_INCLUDE_DIR})
 

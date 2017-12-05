@@ -9,7 +9,6 @@
 #include "mrf_problem_construction.hxx"
 
 #include "parse_rules.h"
-#include "hdf5_routines.hxx"
 
 // this file contains solvers for graphical models, among them SRMP and MPLP
 

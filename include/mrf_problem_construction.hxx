@@ -962,16 +962,6 @@ namespace UaiMrfInput {
    }
 }
 
-// for graphical models in opengm's hdf5 format and with explicit function tables, function-id-16000
-namespace HDF5Input {
-   template<typename SOLVER>
-   bool ParseProblem(const std::string filename, SOLVER& s)
-   {
-      auto& mrf = s.template GetProblemConstructor<0>();
-      return ParseGM(filename, mrf);
-   }
-}
-
 } // end namespace LP_MP
 
 #endif // LP_MP_MRF_PROBLEM_CONSTRUCTION_HXX
