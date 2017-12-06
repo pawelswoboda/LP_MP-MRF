@@ -13,3 +13,7 @@ foreach( source_file ${SOURCE_FILES} )
    target_link_libraries( ${executable_file} LP_MP-MRF lingeling m stdc++ pthread )
 endforeach( source_file ${SOURCE_FILES} )
 
+if(WITH_GUROBI)
+  add_executable(combiLP combiLP.cpp)
+  target_link_libraries(combiLP LP_MP-MRF gurobi m stdc++ pthread)
+endif()

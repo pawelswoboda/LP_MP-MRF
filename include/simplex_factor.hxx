@@ -84,39 +84,10 @@ public:
       s.add_simplex_constraint(v.begin(), v.end());
    }
    template<typename EXTERNAL_SOLVER>
-   void convert_to_primal(EXTERNAL_SOLVER& s, typename EXTERNAL_SOLVER::vector v)
+   void convert_primal(EXTERNAL_SOLVER& s, typename EXTERNAL_SOLVER::vector v)
    {
       primal_ = s.first_active(v.begin(), v.end());
    }
-#ifdef WITH_SAT
-   template<typename SAT_SOLVER>
-   void construct_sat_clauses(SAT_SOLVER& s) const
-   {
-      auto literals = s.add_literal_vector(size());
-      s.add_simplex_constraint(literals.begin(), literals.end());
-   }
-
-   template<typename VEC>
-   void reduce_sat(VEC& assumptions, const REAL th, sat_literal begin) const
-   {
-      const REAL lb = LowerBound();
-      for(INDEX i=0; i<this->size(); ++i) {
-         if((*this)[i] > lb + th) { 
-            assumptions.push_back(-(begin+i));
-         }
-      }
-   }
-
-   template<typename SAT_SOLVER>
-   void convert_primal(SAT_SOLVER& s, sat_literal first)
-   {
-      for(auto i=first; i<first+this->size(); ++i) {
-         if(s.solution(i)) {
-            primal_ = i-first;
-         }
-      }
-   }
-#endif
 
 private:
    INDEX primal_;
