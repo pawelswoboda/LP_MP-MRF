@@ -15,5 +15,5 @@ endforeach( source_file ${SOURCE_FILES} )
 
 if(WITH_GUROBI)
   add_executable(combiLP combiLP.cpp)
-  target_link_libraries(combiLP LP_MP-MRF gurobi m stdc++ pthread)
+  target_link_libraries(combiLP LP_MP-MRF m stdc++ pthread GUROBI)
 endif()

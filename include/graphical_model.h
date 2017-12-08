@@ -12,7 +12,7 @@
 
 // this file contains solvers for graphical models, among them SRMP and MPLP
 
-using namespace LP_MP;
+namespace LP_MP {
 
 struct FMC_SRMP { // equivalent to SRMP or TRWS
    constexpr static const char* name = "SRMP for pairwise case = TRWS";
@@ -71,6 +71,8 @@ struct FMC_MPLP {
    using mrf = StandardMrfConstructor<FMC_MPLP,0,1,0,1>;
    using ProblemDecompositionList = meta::list<mrf>;
 };
+
+} // namespace LP_MP
 
 #endif // LP_MP_GRAPH_MATCHING_H
 
