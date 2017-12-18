@@ -922,10 +922,13 @@ namespace UaiMrfInput {
                assert(var1<var2 && var2 < input.number_of_variables_);
                assert(input.function_tables_[i].size() == input.cardinality_[var1]*input.cardinality_[var2]);
                matrix<REAL> pairwise_cost(dim1,dim2);
+               std::cout << "pairwise potential on (" << var1 << "," << var2 << "):\n";
                for(INDEX l1=0; l1<dim1; ++l1) {
                   for(INDEX l2=0; l2<dim2; ++l2) {
                      pairwise_cost(l1,l2) = input.function_tables_[i][l2*dim1 + l1];
+                     std::cout << input.function_tables_[i][l2*dim1 + l1] << " ";
                   }
+                  std::cout << "\n";
                }
                mrf.AddPairwiseFactor(var1,var2,pairwise_cost); // or do we have to transpose the values?
             }

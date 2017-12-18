@@ -25,15 +25,25 @@ public:
    template<typename RIGHT_FACTOR, typename G2>
    void ReceiveRestrictedMessageFromRight(const RIGHT_FACTOR& r, G2& msg) 
    {
-      // we assume that only r.right_primal was assigned, r.left_primal not
-      //assert(r.primal_[0] == i1_);
-      if(r.primal()[0] < r.dim(0) && r.primal()[1] >= r.dim(1)) {
-         vector<REAL> msgs(r.dim(pairwise_index_));
-         for(INDEX x=0; x<r.dim(pairwise_index_); ++x) {
-            msgs[x] = CHIRALITY == Chirality::left ? r(x,r.primal()[1]) : r(r.primal()[0],x);
+     // we assume that only r.right_primal was assigned, r.left_primal not
+     //assert(r.primal_[0] == i1_);
+     vector<REAL> msgs(r.dim(pairwise_index_));
+     if(CHIRALITY == Chirality::left) {
+       if(r.primal()[1] < r.dim2() && r.primal()[0] >= r.dim1()) {
+         for(INDEX x=0; x<r.dim1(); ++x) {
+           msgs[x] = r(x,r.primal()[1]);
          }
          msg -= msgs;
-      }
+       } 
+     } else {
+       assert(CHIRALITY == Chirality::right);
+       if(r.primal()[0] < r.dim1() && r.primal()[1] >= r.dim2()) {
+         for(INDEX x=0; x<r.dim2(); ++x) {
+           msgs[x] = r(r.primal()[0],x);
+         }
+         msg -= msgs;
+       } 
+     }
    }
 
    template<typename G>

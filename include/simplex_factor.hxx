@@ -381,6 +381,7 @@ public:
    template<typename SOLVER>
    void construct_constraints(SOLVER& s, typename SOLVER::vector left_unary_variables, typename SOLVER::vector right_unary_variables, typename SOLVER::matrix pairwise_variables) const
    {
+     s.add_simplex_constraint(pairwise_variables.begin(), pairwise_variables.end());
       for(INDEX x1=0; x1<dim1(); ++x1) {
          auto slice = pairwise_variables.slice_left(x1);
          auto c = s.max(slice.begin(), slice.end());

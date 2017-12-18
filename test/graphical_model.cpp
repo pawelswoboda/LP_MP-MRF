@@ -1,6 +1,7 @@
 #include "test.h"
 #include "graphical_model.h"
 #include "LP_external_interface.hxx"
+#include "sat_solver.hxx"
 #include "visitors/standard_visitor.hxx"
 
 
