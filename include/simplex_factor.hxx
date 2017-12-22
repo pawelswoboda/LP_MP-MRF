@@ -289,9 +289,7 @@ public:
       }
       assert(primal_[0] < dim1());
       assert(primal_[1] < dim2());
-      const REAL val = (*this)(primal_[0], primal_[1]); 
-      //assert(val < std::numeric_limits<REAL>::infinity());
-      return val;
+      return (*this)(primal_[0], primal_[1]); 
    }
    void MaximizePotentialAndComputePrimal() 
    {
@@ -384,13 +382,13 @@ public:
      s.add_simplex_constraint(pairwise_variables.begin(), pairwise_variables.end());
       for(INDEX x1=0; x1<dim1(); ++x1) {
          auto slice = pairwise_variables.slice_left(x1);
-         auto c = s.max(slice.begin(), slice.end());
+         auto c = s.add_at_most_one_constraint(slice.begin(), slice.end());
          s.make_equal(c, left_unary_variables[x1]);
       }
 
       for(INDEX x2=0; x2<dim2(); ++x2) {
          auto slice = pairwise_variables.slice_right(x2);
-         auto c = s.max(slice.begin(), slice.end());
+         auto c = s.add_at_most_one_constraint(slice.begin(), slice.end());
          s.make_equal(c, right_unary_variables[x2]);
       }
    }

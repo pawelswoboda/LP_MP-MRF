@@ -901,17 +901,25 @@ namespace UaiMrfInput {
             mrf.AddUnaryFactor(i,std::vector<REAL>(noLabels,0.0));
          }
 
+         REAL initial_lb = 0.0;
          for(INDEX i=0; i<input.number_of_cliques_; ++i) {
             if(input.clique_scopes_[i].size() == 1) {
                const INDEX var = input.clique_scopes_[i][0];
+               //std::cout << "unary potential for variable " << var << ":\n";
                auto* f = mrf.GetUnaryFactor(var);
                assert(input.function_tables_[i].size() == input.cardinality_[var]);
+               initial_lb += *std::min_element(input.function_tables_[i].begin(), input.function_tables_[i].end());
                for(INDEX x=0; x<input.function_tables_[i].size(); ++x) {
+                  //std::cout << input.function_tables_[i][x] << " ";
                   assert( (*f->GetFactor())[x] == 0.0);
                   (*f->GetFactor())[x] = input.function_tables_[i][x];
                }
+               //std::cout << "\n";
             }
          }
+
+         //std::cout << "initial lower bound unaries = " << initial_lb << "\n"; 
+
          // now the pairwise potentials. 
          for(INDEX i=0; i<input.number_of_cliques_; ++i) {
             if(input.clique_scopes_[i].size() == 2) {
@@ -921,18 +929,45 @@ namespace UaiMrfInput {
                const INDEX dim2 = mrf.GetNumberOfLabels(var2);
                assert(var1<var2 && var2 < input.number_of_variables_);
                assert(input.function_tables_[i].size() == input.cardinality_[var1]*input.cardinality_[var2]);
+               assert(input.function_tables_[i].size() == dim1*dim2);
                matrix<REAL> pairwise_cost(dim1,dim2);
-               std::cout << "pairwise potential on (" << var1 << "," << var2 << "):\n";
+               initial_lb += *std::min_element(input.function_tables_[i].begin(), input.function_tables_[i].end());
+               //std::cout << "pairwise potential on (" << var1 << "," << var2 << "):\n";
                for(INDEX l1=0; l1<dim1; ++l1) {
                   for(INDEX l2=0; l2<dim2; ++l2) {
                      pairwise_cost(l1,l2) = input.function_tables_[i][l2*dim1 + l1];
-                     std::cout << input.function_tables_[i][l2*dim1 + l1] << " ";
+               //      std::cout << input.function_tables_[i][l2*dim1 + l1] << " ";
                   }
-                  std::cout << "\n";
+               //   std::cout << "\n";
                }
+               //std::cout << pairwise_cost;
                mrf.AddPairwiseFactor(var1,var2,pairwise_cost); // or do we have to transpose the values?
             }
          }
+
+         /*
+         initial_lb = 0.0;
+         for(INDEX i=0; i<input.number_of_cliques_; ++i) {
+            if(input.clique_scopes_[i].size() == 1) {
+               const INDEX var = input.clique_scopes_[i][0];
+               auto* f = mrf.GetUnaryFactor(var);
+               initial_lb += f->LowerBound();
+            }
+         }
+         std::cout << "initial lower bound unaries = " << initial_lb << "\n"; 
+
+         // now the pairwise potentials. 
+         for(INDEX i=0; i<input.number_of_cliques_; ++i) {
+            if(input.clique_scopes_[i].size() == 2) {
+               const INDEX var1 = input.clique_scopes_[i][0];
+               const INDEX var2 = input.clique_scopes_[i][1];
+               auto* f = mrf.GetPairwiseFactor(var1,var2);
+               initial_lb += f->LowerBound();
+            }
+         }
+
+         std::cout << "initial lower bound = " << initial_lb << "\n"; 
+         */
       }
 
 
