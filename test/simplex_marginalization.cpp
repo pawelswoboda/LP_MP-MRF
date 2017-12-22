@@ -27,7 +27,7 @@ int main()
    // must add operators -= and += to vector to support the below things
    // "marginalize pairwise right"
    {
-     vector<REAL> marg(4,0.0);
+     LP_MP::vector<REAL> marg(4,0.0);
      leftMessage.send_message_to_left(simplexPairwise, marg);
      test(marg[0] == -0.05);
      test(marg[1] == -0.001);
@@ -37,7 +37,7 @@ int main()
 
    // "marginalize pairwise left"
    {
-     vector<REAL> marg(3,0.0);
+     LP_MP::vector<REAL> marg(3,0.0);
      rightMessage.send_message_to_left(simplexPairwise, marg);
      test(marg[0] == 0.3);
      test(marg[1] == 0.001);

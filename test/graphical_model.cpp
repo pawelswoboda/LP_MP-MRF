@@ -5,6 +5,8 @@
 #include "visitors/standard_visitor.hxx"
 
 
+using namespace LP_MP;
+
 // UAI test input. Note: not all unaries are present, hence zero unaries must be added.
 std::string uai_test_input = 
 R"(MARKOV
