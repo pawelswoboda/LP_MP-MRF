@@ -339,6 +339,21 @@ namespace LP_MP {
        return ParseGM(filename, mrf);
      }
 
+   template<typename SOLVER>
+     bool ParseOpenGM_DD(const std::string filename, SOLVER& s)
+     {
+       auto& mrf = s.template GetProblemConstructor<0>();
+       const bool success = ParseGM(filename, mrf);
+       auto trees = mrf.compute_forest_cover();
+       for(auto& tree : trees) {
+         s.GetLP().add_tree(tree);
+       }
+
+       return success;
+     }
+
+
+
 
 
 } // end namespace LP_MP

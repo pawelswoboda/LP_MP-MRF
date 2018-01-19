@@ -126,11 +126,12 @@ public:
     template<typename LEFT_FACTOR, typename G2>
     void send_message_to_right(const LEFT_FACTOR& l, G2& msg, const REAL omega = 1.0)
     {
+      const REAL min = l.LowerBound();
       for(INDEX x=0; x<l.size(); ++x) {
         if(!SUPPORT_INFINITY) {
           assert(!std::isnan(l[x]) && l[x] != std::numeric_limits<REAL>::infinity());
         }
-        msg[x] -= omega*l[x];
+        msg[x] -= omega*(l[x] - min);
       }
     }
     template<typename RIGHT_FACTOR, typename G2>
@@ -150,6 +151,8 @@ public:
            assert(!std::isnan(msgs[x]) && msgs[x] != std::numeric_limits<REAL>::infinity());
          }
        }
+       const REAL min = msgs.min();
+       for(INDEX i=0; i<msgs.size(); ++i) { msgs[i] -= min; }
        msg -= omega*msgs;
 #ifndef NDEBUG
        const REAL after_lb = r.LowerBound();

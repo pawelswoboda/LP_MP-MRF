@@ -14,7 +14,7 @@ int main(int argc, char** argv)
     //{"-i"}, {"combiLP_test.uai"},
     //{"-i"}, {"test.h5"},
     {"--maxIter"}, {"250"},
-    {"--roundingReparametrization"}, {"damped_uniform"},
+    {"--roundingReparametrization"}, {"anisotropic"},
     {"--standardReparametrization"}, {"anisotropic"},
     //{"--tighten"},
     {"--tightenReparametrization"}, {"damped_uniform"},

@@ -190,9 +190,9 @@ public:
    }
 
   // build tree of unary and pairwise factors
-  LP_tree add_tree(std::vector<PairwiseFactorContainer*> p)
+  factor_tree add_tree(std::vector<PairwiseFactorContainer*> p)
   {
-     LP_tree t;
+     factor_tree t;
      assert(p.size() > 0);
 
      // extract messages joining unaries and pairwise
@@ -279,9 +279,6 @@ public:
 
      t.init();
 
-     t.compute_subgradient();
-     assert(std::abs(t.lower_bound() - t.primal_cost()) <= eps);
-
      return std::move(t);
   }
 
@@ -291,7 +288,7 @@ public:
   {
      return compute_forest_cover(pairwiseIndices_);
   }
-  std::vector<LP_tree> compute_forest_cover(const std::vector<std::array<INDEX,2>>& pairwiseIndices)
+  std::vector<factor_tree> compute_forest_cover(const std::vector<std::array<INDEX,2>>& pairwiseIndices)
   {
      UndirectedGraph g = UndirectedGraph(unaryFactor_.size(), pairwiseFactor_.size());
      for(auto e : pairwiseIndices) {
@@ -302,7 +299,7 @@ public:
      
      const INDEX forest_num = g.Solve();
      std::cout << "decomposed mrf into " << forest_num << " trees\n";
-     std::vector<LP_tree> trees;
+     std::vector<factor_tree> trees;
 
      std::vector<int> parents(unaryFactor_.size());
      for(INDEX k=0; k<forest_num; ++k) {
@@ -419,6 +416,7 @@ public:
 };
 
 // assumes underlying label space comes from an assignment problem on a bipartite graph, where certain nodes corresponds to unaries in the graphical model. Should inherit from StandardMrfConstructor
+// to do:move to the graph matching project
 template<class MRF_PROBLEM_CONSTRUCTOR>
 class AssignmentGmConstructor : public MRF_PROBLEM_CONSTRUCTOR
 {
@@ -998,6 +996,21 @@ namespace UaiMrfInput {
       }
       return read_suc;
    }
+
+   template<typename SOLVER>
+   bool ParseProblemDD(const std::string& filename, SOLVER& s)
+   {
+     const bool success = ParseProblem(filename, s);
+     auto& mrf = s.template GetProblemConstructor<0>();
+     // decompose mrf into trees automatically.
+     auto trees = mrf.compute_forest_cover();
+     for(auto& tree : trees) {
+       s.GetLP().add_tree(tree);
+     }
+
+     return success;
+   }
+
 }
 
 } // end namespace LP_MP

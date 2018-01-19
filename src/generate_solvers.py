@@ -29,6 +29,19 @@ opengm_combiLP_preamble = """
 #include "hdf5_routines.hxx"
 """
 
+dd_preamble = """
+#include "graphical_model.h"
+#include "visitors/standard_visitor.hxx"
+#include "LP_FWMAP.hxx"
+"""
+
+dd_preamble_opengm = """
+#include "graphical_model.h"
+#include "visitors/standard_visitor.hxx"
+#include "LP_FWMAP.hxx"
+#include "hdf5_routines.hxx"
+"""
+
 solvers = [
     solver(opengm_preamble, 'FMC_SRMP', 'LP', 'ParseOpenGM', 'srmp_opengm.cpp', 'StandardVisitor'),
     solver(opengm_preamble, 'FMC_SRMP_T', 'LP', 'ParseOpenGM', 'srmp_opengm_tightening.cpp', 'StandardTighteningVisitor'),
@@ -37,7 +50,9 @@ solvers = [
     solver(preamble, 'FMC_SRMP_T', 'LP', 'UaiMrfInput::ParseProblem', 'srmp_uai_tightening.cpp', 'StandardTighteningVisitor'),
     solver(preamble, 'FMC_MPLP', 'LP', 'UaiMrfInput::ParseProblem', 'mplp_uai.cpp', 'StandardVisitor'),
     solver(combiLP_preamble, 'FMC_SRMP', 'combiLP<DD_ILP::gurobi_interface, LP>', 'UaiMrfInput::ParseProblem', 'srmp_uai_combiLP.cpp', 'StandardVisitor'),
-    solver(opengm_combiLP_preamble, 'FMC_SRMP', 'combiLP<DD_ILP::gurobi_interface, LP>', 'ParseOpenGM', 'srmp_opengm_combiLP.cpp', 'StandardVisitor')
+    solver(opengm_combiLP_preamble, 'FMC_SRMP', 'combiLP<DD_ILP::gurobi_interface, LP>', 'ParseOpenGM', 'srmp_opengm_combiLP.cpp', 'StandardVisitor'),
+    solver(dd_preamble, 'FMC_SRMP', 'LP_tree_FWMAP', 'UaiMrfInput::ParseProblemDD', 'FWMAP_uai.cpp', 'StandardVisitor'),
+    solver(dd_preamble_opengm, 'FMC_SRMP', 'LP_tree_FWMAP', 'ParseOpenGM_DD', 'FWMAP_opengm.cpp', 'StandardVisitor')
     ]
 
 

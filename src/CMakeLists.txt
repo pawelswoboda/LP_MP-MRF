@@ -28,8 +28,16 @@ if(WITH_GUROBI)
 
   add_executable( srmp_opengm_combiLP srmp_opengm_combiLP.cpp )
   target_link_libraries( srmp_opengm_combiLP LP_MP-MRF DD_ILP GUROBI m stdc++ pthread lingeling HDF5 ) 
+
+  add_executable( gurobi_opengm gurobi_opengm.cpp )
+  target_link_libraries( gurobi_opengm LP_MP-MRF DD_ILP GUROBI m stdc++ pthread lingeling HDF5 )
+
+  add_executable( gurobi_uai gurobi_uai.cpp )
+  target_link_libraries( gurobi_uai LP_MP-MRF DD_ILP GUROBI m stdc++ pthread lingeling )
 endif()
 
-add_executable(convert_to_uai convert_to_uai.cpp)
-target_link_libraries(convert_to_uai HDF5 LP_MP-MRF)
+add_executable(FWMAP_opengm FWMAP_opengm.cpp)
+target_link_libraries(FWMAP_opengm HDF5 LP_MP-MRF m stdc++ pthread lingeling FW-MAP GUROBI arboricity)
 
+add_executable(FWMAP_uai FWMAP_uai.cpp)
+target_link_libraries(FWMAP_uai LP_MP-MRF m stdc++ pthread lingeling FW-MAP GUROBI arboricity)

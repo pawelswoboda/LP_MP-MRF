@@ -4,7 +4,6 @@
 #include "sat_solver.hxx"
 #include "visitors/standard_visitor.hxx"
 
-
 using namespace LP_MP;
 
 // UAI test input. Note: not all unaries are present, hence zero unaries must be added.
