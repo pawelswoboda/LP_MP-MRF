@@ -41,3 +41,9 @@ target_link_libraries(FWMAP_opengm HDF5 LP_MP-MRF m stdc++ pthread lingeling FW-
 
 add_executable(FWMAP_uai FWMAP_uai.cpp)
 target_link_libraries(FWMAP_uai LP_MP-MRF m stdc++ pthread lingeling FW-MAP GUROBI arboricity)
+
+add_executable(conic_bundle_opengm conic_bundle_opengm.cpp)
+target_link_libraries(conic_bundle_opengm HDF5 LP_MP-MRF m stdc++ pthread lingeling CONIC_BUNDLE GUROBI arboricity)
+
+add_executable(conic_bundle_uai conic_bundle_uai.cpp)
+target_link_libraries(conic_bundle_uai LP_MP-MRF m stdc++ pthread lingeling CONIC_BUNDLE GUROBI arboricity)

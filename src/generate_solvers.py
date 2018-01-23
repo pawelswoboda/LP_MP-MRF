@@ -42,6 +42,19 @@ dd_preamble_opengm = """
 #include "hdf5_routines.hxx"
 """
 
+conic_bundle_preamble = """
+#include "graphical_model.h"
+#include "visitors/standard_visitor.hxx"
+#include "LP_conic_bundle.hxx"
+"""
+
+conic_bundle_preamble_opengm = """
+#include "graphical_model.h"
+#include "visitors/standard_visitor.hxx"
+#include "LP_conic_bundle.hxx"
+#include "hdf5_routines.hxx"
+"""
+
 solvers = [
     solver(opengm_preamble, 'FMC_SRMP', 'LP', 'ParseOpenGM', 'srmp_opengm.cpp', 'StandardVisitor'),
     solver(opengm_preamble, 'FMC_SRMP_T', 'LP', 'ParseOpenGM', 'srmp_opengm_tightening.cpp', 'StandardTighteningVisitor'),
@@ -52,7 +65,9 @@ solvers = [
     solver(combiLP_preamble, 'FMC_SRMP', 'combiLP<DD_ILP::gurobi_interface, LP>', 'UaiMrfInput::ParseProblem', 'srmp_uai_combiLP.cpp', 'StandardVisitor'),
     solver(opengm_combiLP_preamble, 'FMC_SRMP', 'combiLP<DD_ILP::gurobi_interface, LP>', 'ParseOpenGM', 'srmp_opengm_combiLP.cpp', 'StandardVisitor'),
     solver(dd_preamble, 'FMC_SRMP', 'LP_tree_FWMAP', 'UaiMrfInput::ParseProblemDD', 'FWMAP_uai.cpp', 'StandardVisitor'),
-    solver(dd_preamble_opengm, 'FMC_SRMP', 'LP_tree_FWMAP', 'ParseOpenGM_DD', 'FWMAP_opengm.cpp', 'StandardVisitor')
+    solver(dd_preamble_opengm, 'FMC_SRMP', 'LP_tree_FWMAP', 'ParseOpenGM_DD', 'FWMAP_opengm.cpp', 'StandardVisitor'),
+    solver(conic_bundle_preamble, 'FMC_SRMP', 'LP_conic_bundle', 'UaiMrfInput::ParseProblemDD', 'conic_bundle_uai.cpp', 'StandardVisitor'),
+    solver(conic_bundle_preamble_opengm, 'FMC_SRMP', 'LP_conic_bundle', 'ParseOpenGM_DD', 'conic_bundle_opengm.cpp', 'StandardVisitor')
     ]
 
 
