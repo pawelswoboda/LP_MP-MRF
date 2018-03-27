@@ -34,8 +34,8 @@ public:
 
    virtual void ConstructUnaryFactor(UnaryFactorType& u, const std::vector<REAL>& cost) = 0;
    virtual void ConstructPairwiseFactor(PairwiseFactorType& p, const INDEX leftDim, const INDEX rightDim) = 0;
-   virtual RightMessageType ConstructRightUnaryPairwiseMessage(UnaryFactorContainer* const right, PairwiseFactorContainer* const p) = 0;
-   virtual LeftMessageType ConstructLeftUnaryPairwiseMessage(UnaryFactorContainer* const right, PairwiseFactorContainer* const p) = 0;
+   virtual void ConstructRightUnaryPairwiseMessage(LP* lp, UnaryFactorContainer* const right, PairwiseFactorContainer* const p) = 0;
+   virtual void ConstructLeftUnaryPairwiseMessage(LP* lp, UnaryFactorContainer* const right, PairwiseFactorContainer* const p) = 0;
 
    UnaryFactorContainer* AddUnaryFactor(const std::vector<REAL>& cost)
    {
@@ -96,10 +96,8 @@ public:
 
    void LinkUnaryPairwiseFactor(UnaryFactorContainer* const left, PairwiseFactorContainer* const p, UnaryFactorContainer* right)
    {
-      auto* l = new LeftMessageContainer(ConstructLeftUnaryPairwiseMessage(left, p), left, p);
-      lp_->AddMessage(l);
-      auto* r = new RightMessageContainer(ConstructRightUnaryPairwiseMessage(right, p), right, p);
-      lp_->AddMessage(r);
+      ConstructLeftUnaryPairwiseMessage(lp_, left, p);
+      ConstructRightUnaryPairwiseMessage(lp_, right, p);
    }
 
 
@@ -373,6 +371,8 @@ public:
    using UnaryFactorContainer = typename BaseConstructor::UnaryFactorContainer;
    using PairwiseFactorType = typename BaseConstructor::PairwiseFactorType;
    using PairwiseFactorContainer = typename BaseConstructor::PairwiseFactorContainer;
+   using RightMessageContainer = typename BaseConstructor::RightMessageContainer;
+   using LeftMessageContainer = typename BaseConstructor::LeftMessageContainer;
    using RightMessageType = typename BaseConstructor::RightMessageType;
    using LeftMessageType = typename BaseConstructor::LeftMessageType;
 
@@ -385,33 +385,20 @@ public:
 
    virtual void ConstructPairwiseFactor(PairwiseFactorType& p, const INDEX i1, const INDEX i2) {} // nothing needs to be done
 
-   RightMessageType ConstructRightUnaryPairwiseMessage(UnaryFactorContainer* const right, PairwiseFactorContainer* const p)
+   void ConstructRightUnaryPairwiseMessage(LP* lp, UnaryFactorContainer* const right, PairwiseFactorContainer* const p)
    { 
-      //using RightUnaryLoopType = typename RightMessageType::LeftLoopType;
-      //using RightPairwiseLoopType = typename RightMessageType::RightLoopType;
-
       const INDEX rightDim = right->GetFactor()->size();
       const INDEX leftDim = p->GetFactor()->dim1();
 
-      //RightUnaryLoopType rightUnaryLoop(rightDim);
-      //std::array<INDEX,2> pairwiseDim = {{leftDim, rightDim}};
-      //RightPairwiseLoopType rightPairwiseLoop( pairwiseDim );
-      return RightMessageType(leftDim, rightDim);
+      lp->add_message<RightMessageContainer>(right, p, leftDim, rightDim);
    }
 
-   LeftMessageType ConstructLeftUnaryPairwiseMessage(UnaryFactorContainer* const left, PairwiseFactorContainer* const p)
+   void ConstructLeftUnaryPairwiseMessage(LP* lp, UnaryFactorContainer* const left, PairwiseFactorContainer* const p)
    {
-      //using LeftUnaryLoopType = typename LeftMessageType::LeftLoopType;
-      //using LeftPairwiseLoopType = typename LeftMessageType::RightLoopType;
-
       const INDEX leftDim = left->GetFactor()->size();
       const INDEX rightDim = p->GetFactor()->dim2();
 
-      //LeftUnaryLoopType leftUnaryLoop(leftDim);
-      //std::array<INDEX,2> pairwiseDim = {{leftDim, rightDim}};
-      //LeftPairwiseLoopType leftPairwiseLoop( pairwiseDim );
-      //return LeftMessageType(leftUnaryLoop, leftPairwiseLoop);
-      return LeftMessageType(leftDim, rightDim);
+      lp->add_message<LeftMessageContainer>(left, p, leftDim, rightDim);
    }
 };
 
@@ -568,10 +555,7 @@ public:
          
       assert(pairwiseDim1*pairwiseDim2 == p->GetFactor()->size());
 
-      using MessageType = typename PAIRWISE_TRIPLET_MESSAGE_CONTAINER::MessageType;
-      MessageType m = MessageType(tripletDim1, tripletDim2, tripletDim3);
-      PAIRWISE_TRIPLET_MESSAGE_CONTAINER* mc = new PAIRWISE_TRIPLET_MESSAGE_CONTAINER(m, p, t);
-      this->lp_->AddMessage(mc);
+      this->lp_->template add_message<PAIRWISE_TRIPLET_MESSAGE_CONTAINER>(p, t, tripletDim1, tripletDim2, tripletDim3);
    }
    INDEX GetNumberOfTripletFactors() const { return tripletFactor_.size(); }
 

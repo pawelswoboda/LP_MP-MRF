@@ -19,7 +19,7 @@ endforeach( source_file ${SOURCE_FILES} )
 foreach( source_file ${OPENGM_SOURCE_FILES} )
    string( REPLACE ".cpp" "" executable_file ${source_file} )
    add_executable( ${executable_file} ${source_file} ${headers} ${sources})
-   target_link_libraries( ${executable_file} HDF5 LP_MP-MRF GUROBI m stdc++ pthread lingeling ) 
+   target_link_libraries( ${executable_file} HDF5 LP_MP-MRF m stdc++ pthread lingeling ) 
 endforeach( source_file ${SOURCE_FILES} )
 
 if(WITH_GUROBI)
