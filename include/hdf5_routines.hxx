@@ -164,71 +164,119 @@ namespace LP_MP {
    }
    */
 
+   namespace opengm_mrf_types {
+      typedef double ValueType;
+      typedef size_t IndexType;
+      typedef size_t LabelType;
+      typedef opengm::Adder OperatorType;
+      typedef opengm::Minimizer AccumulatorType;
+      typedef opengm::DiscreteSpace<IndexType, LabelType> SpaceType;
+
+      typedef opengm::meta::TypeListGenerator<
+         opengm::ExplicitFunction<ValueType, IndexType, LabelType>,
+         opengm::PottsFunction<ValueType, IndexType, LabelType>,
+         opengm::PottsNFunction<ValueType, IndexType, LabelType>,
+         opengm::PottsGFunction<ValueType, IndexType, LabelType>,
+         opengm::TruncatedSquaredDifferenceFunction<ValueType, IndexType, LabelType>,
+         opengm::TruncatedAbsoluteDifferenceFunction<ValueType, IndexType, LabelType>
+      >::type FunctionTypeList;
+
+      typedef opengm::GraphicalModel<
+         ValueType,
+         OperatorType,
+         FunctionTypeList,
+         SpaceType
+      > GmType;
+   }
+
    template<typename MRF_CONSTRUCTOR>
    bool ParseGM(const std::string filename, MRF_CONSTRUCTOR& mrf)
    {
-   typedef double ValueType;
-   typedef size_t IndexType;
-   typedef size_t LabelType;
-   typedef opengm::Adder OperatorType;
-   typedef opengm::Minimizer AccumulatorType;
-   typedef opengm::DiscreteSpace<IndexType, LabelType> SpaceType;
+      using namespace opengm_mrf_types;
 
-   // Set functions for graphical model
-   typedef opengm::meta::TypeListGenerator<
-      opengm::ExplicitFunction<ValueType, IndexType, LabelType>,
-      opengm::PottsFunction<ValueType, IndexType, LabelType>,
-      opengm::PottsNFunction<ValueType, IndexType, LabelType>,
-      opengm::PottsGFunction<ValueType, IndexType, LabelType>,
-      opengm::TruncatedSquaredDifferenceFunction<ValueType, IndexType, LabelType>,
-      opengm::TruncatedAbsoluteDifferenceFunction<ValueType, IndexType, LabelType>
-   >::type FunctionTypeList;
+      GmType gm;
+      ::opengm::hdf5::load(gm, filename, "gm");
 
+      for(INDEX f=0; f<gm.numberOfFactors(); ++f){
 
-   typedef opengm::GraphicalModel<
-      ValueType,
-      OperatorType,
-      FunctionTypeList,
-      SpaceType
-   > GmType;
-   
-
-   GmType gm; 
-   opengm::hdf5::load(gm, filename,"gm");
-
-   for(INDEX f=0; f<gm.numberOfFactors(); ++f){
-
-      if(gm[f].numberOfVariables()==0){
-         // ignore for now
-      }
-      else if(gm[f].numberOfVariables()==1){
-         const INDEX i = gm.variableOfFactor(f,0);
-         std::vector<REAL> unaryCost(gm[f].numberOfLabels(0));         
-         for(INDEX l=0; l<gm[f].numberOfLabels(0); ++l){
-            unaryCost[l] = gm[f](std::array<INDEX,1>({l}).begin()); 
-         } 
-         mrf.AddUnaryFactor(i,unaryCost);
-      } 
-      else if(gm[f].numberOfVariables()==2){
-         const INDEX i = gm.variableOfFactor(f,0);
-         const INDEX j = gm.variableOfFactor(f,1);
-         matrix<REAL> pairwiseCost(gm[f].numberOfLabels(0), gm[f].numberOfLabels(1));//gm[f].size());
-         for(INDEX l1=0; l1<gm[f].numberOfLabels(0); ++l1){
-            for(INDEX l2=0; l2<gm[f].numberOfLabels(1); ++l2){
-               pairwiseCost(l1, l2) = gm[f](std::array<INDEX,2>({l1,l2}).begin()); 
-            }
+         if(gm[f].numberOfVariables()==0){
+            // ignore for now
          }
-         mrf.AddPairwiseFactor(i,j,pairwiseCost);
-      }
-      else{
-         std::cout << "Factors of order higher than 2 are so far not supported !" <<std::endl;
-         return 1;
+         else if(gm[f].numberOfVariables()==1){
+            const INDEX i = gm.variableOfFactor(f,0);
+            std::vector<REAL> unaryCost(gm[f].numberOfLabels(0));
+            for(INDEX l=0; l<gm[f].numberOfLabels(0); ++l){
+               unaryCost[l] = gm[f](std::array<INDEX,1>({l}).begin());
+            } 
+            mrf.AddUnaryFactor(i,unaryCost);
+         } 
+         else if(gm[f].numberOfVariables()==2){
+            const INDEX i = gm.variableOfFactor(f,0);
+            const INDEX j = gm.variableOfFactor(f,1);
+            matrix<REAL> pairwiseCost(gm[f].numberOfLabels(0), gm[f].numberOfLabels(1));//gm[f].size());
+            for(INDEX l1=0; l1<gm[f].numberOfLabels(0); ++l1){
+               for(INDEX l2=0; l2<gm[f].numberOfLabels(1); ++l2){
+                  pairwiseCost(l1, l2) = gm[f](std::array<INDEX,2>({l1,l2}).begin()); 
+               }
+            }
+            mrf.AddPairwiseFactor(i,j,pairwiseCost);
+         }
+         else{
+            std::cout << "Factors of order higher than 2 are so far not supported !" <<std::endl;
+            return 1;
+         }
       }
 
+      return true;
    }
 
+   template<typename MRF_CONSTRUCTOR>
+   bool WriteGM(const std::string filename, MRF_CONSTRUCTOR& mrf)
+   {
+      using namespace opengm_mrf_types;
+      GmType gm;
 
-   return true;
+      // TODO: Handle constant term (future commit...).
+
+      for (INDEX i = 0; i < mrf.GetNumberOfVariables(); ++i) {
+         INDEX gm_i = gm.addVariable(mrf.GetNumberOfLabels(i)); assert(gm_i == i);
+         std::array<IndexType, 1> variables { i };
+         std::array<IndexType, 1> space { mrf.GetNumberOfLabels(i) };
+         opengm::ExplicitFunction<ValueType, IndexType, LabelType> f(space.begin(), space.end());
+         for (INDEX j = 0; j < mrf.GetNumberOfLabels(i); ++j)
+            f(j) = mrf.GetUnaryFactor(i)->GetFactor()->operator[](j);
+         gm.addFactor(gm.addFunction(f), variables.begin(), variables.end());
+      }
+
+      for (INDEX i = 0; i < mrf.GetNumberOfPairwiseFactors(); ++i) {
+         auto variables = mrf.GetPairwiseVariables(i);
+         std::array<IndexType, 2> space {
+            mrf.GetNumberOfLabels(variables[0]),
+            mrf.GetNumberOfLabels(variables[1]) };
+         opengm::ExplicitFunction<ValueType, IndexType, LabelType> f(space.begin(), space.begin() + 2);
+         for (INDEX j = 0; j < mrf.GetNumberOfLabels(variables[0]); ++j)
+            for (INDEX k = 0; k < mrf.GetNumberOfLabels(variables[1]); ++k)
+               f(j, k) = mrf.GetPairwiseFactor(i)->GetFactor()->operator()(j, k);
+         gm.addFactor(gm.addFunction(f), variables.begin(), variables.end());
+      }
+
+      if constexpr (MrfHasTripletFactors<MRF_CONSTRUCTOR>::value) {
+         for (INDEX i = 0; i < mrf.GetNumberOfTripletFactors(); ++i) {
+            auto variables = mrf.GetTripletIndices(i);
+            std::array<IndexType, 3> space {
+               mrf.GetNumberOfLabels(variables[0]),
+               mrf.GetNumberOfLabels(variables[1]),
+               mrf.GetNumberOfLabels(variables[2]) };
+            opengm::ExplicitFunction<ValueType, IndexType, LabelType> f(space.begin(), space.begin() + 2);
+            for (INDEX j = 0; j < mrf.GetNumberOfLabels(variables[0]); ++j)
+               for (INDEX k = 0; k < mrf.GetNumberOfLabels(variables[1]); ++k)
+                  for (INDEX l = 0; l < mrf.GetNumberOfLabels(variables[2]); ++l)
+                     f(j, k, l) = mrf.GetPairwiseFactor(i)->GetFactor()->operator()(j, k, l);
+            gm.addFactor(gm.addFunction(f), variables.begin(), variables.end());
+         }
+      }
+
+      opengm::hdf5::save(gm, filename, "gm");
    }
 
    template<typename MRF_CONSTRUCTOR>

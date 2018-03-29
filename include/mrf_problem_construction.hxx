@@ -726,6 +726,12 @@ protected:
    std::map<std::array<INDEX,3>, INDEX> tripletMap_; // given two sorted indices, return factorId belonging to that index.
 };
 
+template<typename, typename = std::void_t<>>
+struct MrfHasTripletFactors : std::false_type { };
+
+template<typename T>
+struct MrfHasTripletFactors<T, std::void_t<typename T::TripletFactor>> : std::true_type { };
+
 
 ///////////////////////////////////////////////////////////////////
 //
