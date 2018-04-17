@@ -348,6 +348,10 @@ public:
      return std::move(trees);
   }
 
+  constexpr INDEX arity() {
+     return 2;
+  }
+
 protected:
    std::vector<UnaryFactorContainer*> unaryFactor_;
    std::vector<PairwiseFactorContainer*> pairwiseFactor_;
@@ -719,18 +723,16 @@ public:
       return no_triplets_added;
    }
 
+   constexpr INDEX arity() {
+      return 3;
+   }
+
 
 protected:
    std::vector<TripletFactorContainer*> tripletFactor_;
    std::vector<std::array<INDEX,3>> tripletIndices_;
    std::map<std::array<INDEX,3>, INDEX> tripletMap_; // given two sorted indices, return factorId belonging to that index.
 };
-
-template<typename, typename = std::void_t<>>
-struct MrfHasTripletFactors : std::false_type { };
-
-template<typename T>
-struct MrfHasTripletFactors<T, std::void_t<typename T::TripletFactor>> : std::true_type { };
 
 
 ///////////////////////////////////////////////////////////////////

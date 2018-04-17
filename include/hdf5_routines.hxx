@@ -260,7 +260,7 @@ namespace LP_MP {
          gm.addFactor(gm.addFunction(f), variables.begin(), variables.end());
       }
 
-      if constexpr (MrfHasTripletFactors<MRF_CONSTRUCTOR>::value) {
+      if constexpr (mrf.arity() >= 3) {
          for (INDEX i = 0; i < mrf.GetNumberOfTripletFactors(); ++i) {
             auto variables = mrf.GetTripletIndices(i);
             std::array<IndexType, 3> space {
