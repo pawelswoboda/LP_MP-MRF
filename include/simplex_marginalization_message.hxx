@@ -57,6 +57,15 @@ public:
       }
       assert(!std::isnan(r[msg_dim]));
    }
+
+   template<typename LEFT_FACTOR, typename MSG>
+   void RepamLeft(LEFT_FACTOR& l, MSG& msg)
+   {
+      for(std::size_t i=0; i<l.size(); ++i) {
+          RepamLeft(l, msg[i], i);
+      }
+   }
+
    template<typename A1, typename A2>
    void RepamRight(A1& r, const A2& msgs)
    {
@@ -134,6 +143,28 @@ public:
         msg[x] -= omega*(l[x] - min);
       }
     }
+
+    template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
+    REAL send_message_to_right_improvement(LEFT_FACTOR& l, RIGHT_FACTOR& r)
+    {
+       const auto before_right_lb = r.LowerBound(); 
+
+       const REAL min = l.LowerBound();
+       for(INDEX x=0; x<l.size(); ++x) {
+           if(!SUPPORT_INFINITY) { assert(!std::isnan(l[x]) && l[x] != std::numeric_limits<REAL>::infinity()); }
+           RepamRight(r, l[x] - min, x);
+       }
+
+       const auto after_right_lb = r.LowerBound();
+
+       for(INDEX x=0; x<l.size(); ++x) {
+           if(!SUPPORT_INFINITY) { assert(!std::isnan(l[x]) && l[x] != std::numeric_limits<REAL>::infinity()); }
+           RepamRight(r, (l[x] - min), x);
+       }
+
+       return after_right_lb - before_right_lb; 
+    }
+
     template<typename RIGHT_FACTOR, typename G2>
     void send_message_to_left(const RIGHT_FACTOR& r, G2& msg, const REAL omega = 1.0)
     {
@@ -158,6 +189,31 @@ public:
        const REAL after_lb = r.LowerBound();
        //assert(before_lb <= after_lb); 
 #endif
+    }
+
+    template<typename LEFT_FACTOR, typename RIGHT_FACTOR>
+    REAL send_message_to_left_improvement(LEFT_FACTOR& l, RIGHT_FACTOR& r)
+    {
+       vector<REAL> msg;
+       if(CHIRALITY == Chirality::left) {
+          msg = r.min_marginal_1();
+       } else {
+          msg = r.min_marginal_2(); 
+       }
+        
+       const REAL min = msg.min();
+       for(INDEX i=0; i<msg.size(); ++i) { msg[i] -= min; }
+
+       const auto before_left_lb = l.LowerBound();
+
+       RepamLeft(l, msg);
+
+       const auto after_left_lb = l.LowerBound();
+
+       for(auto& x : msg) { x *= -1.0; }
+       RepamLeft(l, msg);
+
+       return after_left_lb - before_left_lb;
     }
 
    template<typename LEFT_FACTOR, typename RIGHT_FACTOR>

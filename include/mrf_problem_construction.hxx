@@ -34,8 +34,8 @@ public:
 
    virtual void ConstructUnaryFactor(UnaryFactorType& u, const std::vector<REAL>& cost) = 0;
    virtual void ConstructPairwiseFactor(PairwiseFactorType& p, const INDEX leftDim, const INDEX rightDim) = 0;
-   virtual void ConstructRightUnaryPairwiseMessage(LP* lp, UnaryFactorContainer* const right, PairwiseFactorContainer* const p) = 0;
-   virtual void ConstructLeftUnaryPairwiseMessage(LP* lp, UnaryFactorContainer* const right, PairwiseFactorContainer* const p) = 0;
+   virtual void ConstructRightUnaryPairwiseMessage(LP<FMC>* lp, UnaryFactorContainer* const right, PairwiseFactorContainer* const p) = 0;
+   virtual void ConstructLeftUnaryPairwiseMessage(LP<FMC>* lp, UnaryFactorContainer* const right, PairwiseFactorContainer* const p) = 0;
 
    UnaryFactorContainer* AddUnaryFactor(const std::vector<REAL>& cost)
    {
@@ -43,8 +43,7 @@ public:
    }
    UnaryFactorContainer* AddUnaryFactor(const INDEX node_number, const std::vector<REAL>& cost)
    {
-      //UnaryFactorContainer* u = new UnaryFactorContainer(UnaryFactorType(cost), cost);
-      auto* u = new UnaryFactorContainer( cost.size() );
+      auto* u = lp_->template add_factor<UnaryFactorContainer>(cost.size());
       ConstructUnaryFactor( *(u->GetFactor()), cost );
       if(node_number >= unaryFactor_.size()) {
          unaryFactor_.resize(node_number+1,nullptr);
@@ -54,9 +53,7 @@ public:
       unaryFactor_[node_number] = u;
       if(node_number > 0 && unaryFactor_[node_number-1]) { // fails for non-contiguous access
          lp_->AddFactorRelation(unaryFactor_[node_number-1], unaryFactor_[node_number]);
-      }
-      
-      lp_->AddFactor(u);;
+      } 
 
       return u;
    }
@@ -79,8 +76,7 @@ public:
       //assert(cost.size() == GetNumberOfLabels(var1) * GetNumberOfLabels(var2));
       //assert(pairwiseMap_.find(std::make_tuple(var1,var2)) == pairwiseMap_.end());
       //PairwiseFactorContainer* p = new PairwiseFactorContainer(PairwiseFactor(cost), cost);
-      auto* p = new PairwiseFactorContainer(GetNumberOfLabels(var1), GetNumberOfLabels(var2), cost);
-      lp_->AddFactor(p);
+      auto* p = lp_->template add_factor<PairwiseFactorContainer>(GetNumberOfLabels(var1), GetNumberOfLabels(var2), cost);
       ConstructPairwiseFactor(*(p->GetFactor()), var1, var2);
       pairwiseFactor_.push_back(p);
       pairwiseIndices_.push_back(std::array<INDEX,2>({var1,var2}));
@@ -188,15 +184,15 @@ public:
    }
 
   // build tree of unary and pairwise factors
-  factor_tree add_tree(std::vector<PairwiseFactorContainer*> p)
+  factor_tree<FMC> add_tree(std::vector<PairwiseFactorContainer*> p)
   {
-     factor_tree t;
+     factor_tree<FMC> t;
      assert(p.size() > 0);
 
      // extract messages joining unaries and pairwise
      std::set<UnaryFactorContainer*> u_set; // u_set is not strictly needed, but helps in checking correctness of algorithm
      std::set<PairwiseFactorContainer*> p_set;
-     std::vector<std::tuple<Chirality, MessageTypeAdapter*>> ordered_msgs;
+     std::vector<std::tuple<Chirality, PairwiseFactorContainer*>> ordered_msgs;
      UnaryFactorContainer* root = nullptr;
      for(auto* f : p) {
         p_set.insert(f); 
@@ -277,16 +273,14 @@ public:
 
      t.init();
 
-     return std::move(t);
+     return t;
   }
 
   // compute forest cover of MRF and add each resulting tree
 
-  auto compute_forest_cover()
-  {
-     return compute_forest_cover(pairwiseIndices_);
-  }
-  std::vector<factor_tree> compute_forest_cover(const std::vector<std::array<INDEX,2>>& pairwiseIndices)
+  auto compute_forest_cover() { return compute_forest_cover(pairwiseIndices_); }
+
+  std::vector<factor_tree<FMC>> compute_forest_cover(const std::vector<std::array<INDEX,2>>& pairwiseIndices)
   {
      UndirectedGraph g = UndirectedGraph(unaryFactor_.size(), pairwiseFactor_.size());
      for(auto e : pairwiseIndices) {
@@ -297,7 +291,7 @@ public:
      
      const INDEX forest_num = g.Solve();
      std::cout << "decomposed mrf into " << forest_num << " trees\n";
-     std::vector<factor_tree> trees;
+     std::vector<factor_tree<FMC>> trees;
 
      std::vector<int> parents(unaryFactor_.size());
      for(INDEX k=0; k<forest_num; ++k) {
@@ -356,7 +350,7 @@ protected:
 
    //INDEX unaryFactorIndexBegin_, unaryFactorIndexEnd_; // do zrobienia: not needed anymore
 
-   LP* lp_;
+   LP<FMC>* lp_;
 };
 
 // overloads virtual functions above for standard SimplexFactor and SimplexMarginalizationMessage
@@ -364,9 +358,10 @@ template<class FACTOR_MESSAGE_CONNECTION, INDEX UNARY_FACTOR_NO, INDEX PAIRWISE_
 class StandardMrfConstructor : public MRFProblemConstructor<FACTOR_MESSAGE_CONNECTION, UNARY_FACTOR_NO, PAIRWISE_FACTOR_NO, LEFT_MESSAGE_NO, RIGHT_MESSAGE_NO>
 {
 public:
-   using MRFProblemConstructor<FACTOR_MESSAGE_CONNECTION, UNARY_FACTOR_NO, PAIRWISE_FACTOR_NO, LEFT_MESSAGE_NO, RIGHT_MESSAGE_NO>::MRFProblemConstructor;
+using FMC = FACTOR_MESSAGE_CONNECTION;
+   using MRFProblemConstructor<FMC, UNARY_FACTOR_NO, PAIRWISE_FACTOR_NO, LEFT_MESSAGE_NO, RIGHT_MESSAGE_NO>::MRFProblemConstructor;
    // this is not nice: how to import all aliases directly here? Is it possible at all, while base class is parametrized by templates?
-   using BaseConstructor = MRFProblemConstructor<FACTOR_MESSAGE_CONNECTION, UNARY_FACTOR_NO, PAIRWISE_FACTOR_NO, LEFT_MESSAGE_NO, RIGHT_MESSAGE_NO>;
+   using BaseConstructor = MRFProblemConstructor<FMC, UNARY_FACTOR_NO, PAIRWISE_FACTOR_NO, LEFT_MESSAGE_NO, RIGHT_MESSAGE_NO>;
    using UnaryFactorType = typename BaseConstructor::UnaryFactorType;
    using UnaryFactorContainer = typename BaseConstructor::UnaryFactorContainer;
    using PairwiseFactorType = typename BaseConstructor::PairwiseFactorType;
@@ -385,20 +380,20 @@ public:
 
    virtual void ConstructPairwiseFactor(PairwiseFactorType& p, const INDEX i1, const INDEX i2) {} // nothing needs to be done
 
-   void ConstructRightUnaryPairwiseMessage(LP* lp, UnaryFactorContainer* const right, PairwiseFactorContainer* const p)
+   void ConstructRightUnaryPairwiseMessage(LP<FMC>* lp, UnaryFactorContainer* const right, PairwiseFactorContainer* const p)
    { 
       const INDEX rightDim = right->GetFactor()->size();
       const INDEX leftDim = p->GetFactor()->dim1();
 
-      lp->add_message<RightMessageContainer>(right, p, leftDim, rightDim);
+      lp->template add_message<RightMessageContainer>(right, p, leftDim, rightDim);
    }
 
-   void ConstructLeftUnaryPairwiseMessage(LP* lp, UnaryFactorContainer* const left, PairwiseFactorContainer* const p)
+   void ConstructLeftUnaryPairwiseMessage(LP<FMC>* lp, UnaryFactorContainer* const left, PairwiseFactorContainer* const p)
    {
       const INDEX leftDim = left->GetFactor()->size();
       const INDEX rightDim = p->GetFactor()->dim2();
 
-      lp->add_message<LeftMessageContainer>(left, p, leftDim, rightDim);
+      lp->template add_message<LeftMessageContainer>(left, p, leftDim, rightDim);
    }
 };
 
@@ -512,8 +507,7 @@ public:
       const INDEX factor13Id = this->pairwiseMap_.find(std::make_tuple(var1,var3))->second;
       const INDEX factor23Id = this->pairwiseMap_.find(std::make_tuple(var2,var3))->second;
 
-      TripletFactorContainer* t = new TripletFactorContainer(this->GetNumberOfLabels(var1), this->GetNumberOfLabels(var2), this->GetNumberOfLabels(var3));
-      this->lp_->AddFactor(t);
+      TripletFactorContainer* t = this->lp_->template add_factor<TripletFactorContainer>(this->GetNumberOfLabels(var1), this->GetNumberOfLabels(var2), this->GetNumberOfLabels(var3));
       tripletFactor_.push_back(t);
       tripletIndices_.push_back(std::array<INDEX,3>({var1,var2,var3}));
       const INDEX factorId = tripletFactor_.size()-1;

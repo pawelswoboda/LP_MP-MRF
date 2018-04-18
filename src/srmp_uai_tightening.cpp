@@ -4,7 +4,7 @@
 
 using namespace LP_MP;
 int main(int argc, char** argv) {
-MpRoundingSolver<Solver<FMC_SRMP_T,LP,StandardTighteningVisitor>> solver(argc,argv);
-solver.ReadProblem(UaiMrfInput::ParseProblem<Solver<FMC_SRMP_T,LP,StandardTighteningVisitor>>);
+MpRoundingSolver<Solver<FMC_SRMP_T,LP<FMC_SRMP_T>,StandardTighteningVisitor>> solver(argc,argv);
+solver.ReadProblem(UaiMrfInput::ParseProblem<Solver<FMC_SRMP_T,LP<FMC_SRMP_T>,StandardTighteningVisitor>>);
 return solver.Solve();
 }
