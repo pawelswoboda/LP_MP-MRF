@@ -10,7 +10,7 @@ foreach( source_file ${SOURCE_FILES} )
    string( REPLACE ".cpp" "" executable_file ${source_file} )
    set(TARGET_NAME ${executable_file})
    add_executable( ${executable_file} ${source_file} )
-   target_link_libraries( ${executable_file} LP_MP-MRF DD_ILP GUROBI lingeling m stdc++ pthread )
+   target_link_libraries( ${executable_file} LP_MP-MRF DD_ILP lingeling m stdc++ pthread )
    add_test(${executable_file} ${executable_file})
 endforeach( source_file ${SOURCE_FILES} )
 

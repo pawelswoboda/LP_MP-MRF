@@ -64,10 +64,10 @@ solvers = [
     solver(preamble, 'FMC_MPLP', 'LP<FMC_MPLP>', 'UaiMrfInput::ParseProblem', 'mplp_uai.cpp', 'StandardVisitor'),
     solver(combiLP_preamble, 'FMC_SRMP', 'combiLP<DD_ILP::gurobi_interface, LP<FMC_SRMP>>', 'UaiMrfInput::ParseProblem', 'srmp_uai_combiLP.cpp', 'StandardVisitor'),
     solver(opengm_combiLP_preamble, 'FMC_SRMP', 'combiLP<DD_ILP::gurobi_interface, LP<FMC_SRMP>>', 'ParseOpenGM', 'srmp_opengm_combiLP.cpp', 'StandardVisitor'),
-    solver(dd_preamble, 'FMC_SRMP', 'LP_tree_FWMAP', 'UaiMrfInput::ParseProblemDD', 'FWMAP_uai.cpp', 'StandardVisitor'),
-    solver(dd_preamble_opengm, 'FMC_SRMP', 'LP_tree_FWMAP', 'ParseOpenGM_DD', 'FWMAP_opengm.cpp', 'StandardVisitor'),
-    solver(conic_bundle_preamble, 'FMC_SRMP', 'LP_conic_bundle', 'UaiMrfInput::ParseProblemDD', 'conic_bundle_uai.cpp', 'StandardVisitor'),
-    solver(conic_bundle_preamble_opengm, 'FMC_SRMP', 'LP_conic_bundle', 'ParseOpenGM_DD', 'conic_bundle_opengm.cpp', 'StandardVisitor')
+    solver(dd_preamble, 'FMC_SRMP', 'LP_tree_FWMAP<FMC_SRMP>', 'UaiMrfInput::ParseProblemDD', 'FWMAP_uai.cpp', 'StandardVisitor'),
+    solver(dd_preamble_opengm, 'FMC_SRMP', 'LP_tree_FWMAP<FMC_SRMP>', 'ParseOpenGM_DD', 'FWMAP_opengm.cpp', 'StandardVisitor'),
+    solver(conic_bundle_preamble, 'FMC_SRMP', 'LP_conic_bundle<FMC_SRMP>', 'UaiMrfInput::ParseProblemDD', 'conic_bundle_uai.cpp', 'StandardVisitor'),
+    solver(conic_bundle_preamble_opengm, 'FMC_SRMP', 'LP_conic_bundle<FMC_SRMP>', 'ParseOpenGM_DD', 'conic_bundle_opengm.cpp', 'StandardVisitor')
     ]
 
 
@@ -76,6 +76,6 @@ for e in solvers:
    f.write(e.preamble)
    f.write("\nusing namespace LP_MP;\n")
    f.write("int main(int argc, char** argv) {\nMpRoundingSolver<Solver<")
-   f.write(e.FMC + "," + e.LP + "," + e.visitor + ">> solver(argc,argv);\n")
-   f.write("solver.ReadProblem(" + e.parse_fun + "<Solver<" + e.FMC + "," + e.LP + "," + e.visitor + ">>);\n")
+   f.write(e.LP + "," + e.visitor + ">> solver(argc,argv);\n")
+   f.write("solver.ReadProblem(" + e.parse_fun + "<Solver<" + e.LP + "," + e.visitor + ">>);\n")
    f.write("return solver.Solve();\n}")

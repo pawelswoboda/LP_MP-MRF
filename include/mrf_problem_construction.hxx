@@ -192,7 +192,6 @@ public:
      // extract messages joining unaries and pairwise
      std::set<UnaryFactorContainer*> u_set; // u_set is not strictly needed, but helps in checking correctness of algorithm
      std::set<PairwiseFactorContainer*> p_set;
-     std::vector<std::tuple<Chirality, PairwiseFactorContainer*>> ordered_msgs;
      UnaryFactorContainer* root = nullptr;
      for(auto* f : p) {
         p_set.insert(f); 
@@ -217,6 +216,7 @@ public:
 
      std::deque<UnaryFactorContainer*> u_stack;
      u_stack.push_back(root);
+     std::vector<std::tuple<Chirality, PairwiseFactorContainer*>> ordered_msgs;
 
      while(!u_stack.empty()) {
         auto* f = u_stack.front();
@@ -229,15 +229,13 @@ public:
               auto* p_cand = (*it)->GetRightFactor();
               if(p_set.find(p_cand) != p_set.end()) {
                  p_set.erase(p_cand);
-                 //t.AddMessage((*it), Chirality::left); // or right?
-                 ordered_msgs.push_back(std::make_tuple(Chirality::left, *it));
+                 ordered_msgs.push_back(std::make_tuple(Chirality::left, p_cand));
                  // search for the other unary connected to p_cand
                  auto msgs_other = p_cand->template get_messages<RightMessageContainer>();
                  assert(msgs_other.size() == 1);
-                 auto* u_other = (*msgs_other.begin())->GetLeftFactor();
+                 auto* u_other = msgs_other[0]->GetLeftFactor();
                  assert(u_set.find(u_other) != u_set.end());
                  //t.AddMessage(*(msgs_other.begin()), Chirality::right);
-                 ordered_msgs.push_back(std::make_tuple(Chirality::right, *(msgs_other.begin())));
                  u_stack.push_back(u_other);
               }
            }
@@ -250,14 +248,13 @@ public:
               if(p_set.find(p_cand) != p_set.end()) {
                  p_set.erase(p_cand);
                  //t.AddMessage((*it), Chirality::left); // or right?
-                 ordered_msgs.push_back(std::make_tuple(Chirality::left, *it));
+                 ordered_msgs.push_back(std::make_tuple(Chirality::left, p_cand));
                  // search for the other unary connected to p_cand
                  auto msgs_other = p_cand->template get_messages<LeftMessageContainer>();
                  assert(msgs_other.size() == 1);
-                 auto* u_other = (*msgs_other.begin())->GetLeftFactor();
+                 auto* u_other = msgs_other[0]->GetLeftFactor();
                  assert(u_set.find(u_other) != u_set.end());
                  //t.AddMessage(*(msgs_other.begin()), Chirality::right);
-                 ordered_msgs.push_back(std::make_tuple(Chirality::right, *(msgs_other.begin())));
                  u_stack.push_back(u_other);
               }
            }
@@ -268,7 +265,20 @@ public:
 
      std::reverse(ordered_msgs.begin(), ordered_msgs.end());
      for(auto e : ordered_msgs) {
-        t.AddMessage(std::get<1>(e), std::get<0>(e));
+         auto* p = std::get<1>(e);
+         auto left_msgs = p->template get_messages<LeftMessageContainer>();
+         assert(left_msgs.size() == 1);
+         auto right_msgs = p->template get_messages<RightMessageContainer>();
+         assert(right_msgs.size() == 1);
+
+         if(std::get<0>(e) == Chirality::left) {
+             t.add_message(left_msgs[0], Chirality::left);
+             t.add_message(right_msgs[0], Chirality::right);
+         } else {
+             assert(std::get<0>(e) == Chirality::right);
+             t.add_message(right_msgs[0], Chirality::right);
+             t.add_message(left_msgs[0], Chirality::left);
+         }
      }
 
      t.init();

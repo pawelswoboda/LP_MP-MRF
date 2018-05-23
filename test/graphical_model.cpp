@@ -50,7 +50,7 @@ int main()
    {
       using FMC = FMC_SRMP;
       using VisitorType = StandardVisitor;
-      using SolverType = MpRoundingSolver<Solver<FMC,LP,VisitorType>>;
+      using SolverType = MpRoundingSolver<Solver<LP<FMC>,VisitorType>>;
 
       SolverType s(solver_options);
       UaiMrfInput::ParseString<SolverType,0>(uai_test_input, s); 
@@ -90,7 +90,7 @@ int main()
    {
       using FMC = FMC_SRMP;
       using VisitorType = StandardVisitor;
-      using SolverType = MpRoundingSolver<Solver<FMC,LP_external_solver<DD_ILP::sat_solver,LP>,VisitorType>>;
+      using SolverType = MpRoundingSolver<Solver<LP_external_solver<DD_ILP::sat_solver,LP<FMC>>,VisitorType>>;
 
       SolverType s(sat_solver_options);
       auto& mrf = s.template GetProblemConstructor<0>();
@@ -116,7 +116,7 @@ int main()
    {
       using FMC = FMC_SRMP;
       using VisitorType = StandardVisitor;
-      using SolverType = MpRoundingSolver<Solver<FMC,LP_external_solver<DD_ILP::sat_solver,LP>,VisitorType>>;
+      using SolverType = MpRoundingSolver<Solver<LP_external_solver<DD_ILP::sat_solver,LP<FMC>>,VisitorType>>;
 
       SolverType s(sat_solver_options);
       auto& mrf = s.template GetProblemConstructor<0>();
@@ -142,7 +142,7 @@ int main()
    {
       using FMC = FMC_SRMP_T;
       using VisitorType = StandardTighteningVisitor;
-      using SolverType = MpRoundingSolver<Solver<FMC,LP,VisitorType>>;
+      using SolverType = MpRoundingSolver<Solver<LP<FMC>,VisitorType>>;
 
       auto tightening_solver_options = solver_options;
       tightening_solver_options.push_back("--tighten");
@@ -256,7 +256,7 @@ int main()
 
       // SAT rounding
       {
-         using SatSolverType = MpRoundingSolver<Solver<FMC,LP_external_solver<DD_ILP::sat_solver,LP>,VisitorType>>;
+         using SatSolverType = MpRoundingSolver<Solver<LP_external_solver<DD_ILP::sat_solver,LP<FMC>>,VisitorType>>;
 
          SatSolverType s_sat(solver_options);
          auto& mrf_sat = s_sat.template GetProblemConstructor<0>();

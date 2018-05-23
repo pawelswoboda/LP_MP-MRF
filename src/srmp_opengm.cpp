@@ -5,7 +5,7 @@
 
 using namespace LP_MP;
 int main(int argc, char** argv) {
-MpRoundingSolver<Solver<FMC_SRMP,LP<FMC_SRMP>,StandardVisitor>> solver(argc,argv);
-solver.ReadProblem(ParseOpenGM<Solver<FMC_SRMP,LP<FMC_SRMP>,StandardVisitor>>);
+MpRoundingSolver<Solver<LP<FMC_SRMP>,StandardVisitor>> solver(argc,argv);
+solver.ReadProblem(ParseOpenGM<Solver<LP<FMC_SRMP>,StandardVisitor>>);
 return solver.Solve();
 }
