@@ -20,6 +20,7 @@ int main()
          simplexPairwise.cost(i,j) = costPairwise[i*3 + j];
       }
    }
+   const auto pairwise_min = *std::min_element(costPairwise.begin(), costPairwise.end());
 
    UnaryPairwiseMessage<Chirality::left,true> leftMessage(4,3);
    UnaryPairwiseMessage<Chirality::right,true> rightMessage(4,3);
@@ -29,19 +30,19 @@ int main()
    {
      LP_MP::vector<REAL> marg(4,0.0);
      leftMessage.send_message_to_left(simplexPairwise, marg);
-     test(marg[0] == -0.05);
-     test(marg[1] == -0.001);
-     test(marg[2] ==  0.3);
-     test(marg[3] == -0.001);
+     test(marg[0] == -0.05 + pairwise_min);
+     test(marg[1] == -0.001 + pairwise_min);
+     test(marg[2] ==  0.3 + pairwise_min);
+     test(marg[3] == -0.001 + pairwise_min);
    }
 
    // "marginalize pairwise left"
    {
      LP_MP::vector<REAL> marg(3,0.0);
      rightMessage.send_message_to_left(simplexPairwise, marg);
-     test(marg[0] == 0.3);
-     test(marg[1] == 0.001);
-     test(marg[2] == 0.2);
+     test(marg[0] == 0.3 + pairwise_min);
+     test(marg[1] == 0.001 + pairwise_min);
+     test(marg[2] == 0.2 + pairwise_min);
    }
 
    // do zrobienia: test ComputeLeftFromRightPrimal and reverse, repamLeft,repamRight, Send{Left|Right}Message and also interchange unary and right/left loop

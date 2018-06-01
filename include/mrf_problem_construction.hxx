@@ -145,8 +145,8 @@ public:
       }
    }
    INDEX GetNumberOfPairwiseFactors() const { return pairwiseFactor_.size(); }
-   std::array<INDEX,2> GetPairwiseVariables(const INDEX factorNo) const { return pairwiseIndices_[factorNo]; }
-   INDEX GetNumberOfLabels(const INDEX i) const { return unaryFactor_[i]->GetFactor()->size(); }
+   std::array<INDEX,2> GetPairwiseVariables(const INDEX factorNo) const { assert(factorNo < pairwiseIndices_.size()); return pairwiseIndices_[factorNo]; }
+   INDEX GetNumberOfLabels(const INDEX i) const { assert(i < unaryFactor_.size()); return unaryFactor_[i]->GetFactor()->size(); }
    REAL GetPairwiseValue(const INDEX factorId, const INDEX i1, const INDEX i2) const
    {
       assert(i1 < GetNumberOfLabels( GetPairwiseVariables(factorId)[0] ));
@@ -217,6 +217,7 @@ public:
      std::deque<UnaryFactorContainer*> u_stack;
      u_stack.push_back(root);
      std::vector<std::tuple<Chirality, PairwiseFactorContainer*>> ordered_msgs;
+     ordered_msgs.reserve(2*p.size());
 
      while(!u_stack.empty()) {
         auto* f = u_stack.front();
@@ -248,7 +249,7 @@ public:
               if(p_set.find(p_cand) != p_set.end()) {
                  p_set.erase(p_cand);
                  //t.AddMessage((*it), Chirality::left); // or right?
-                 ordered_msgs.push_back(std::make_tuple(Chirality::left, p_cand));
+                 ordered_msgs.push_back(std::make_tuple(Chirality::right, p_cand));
                  // search for the other unary connected to p_cand
                  auto msgs_other = p_cand->template get_messages<LeftMessageContainer>();
                  assert(msgs_other.size() == 1);
@@ -272,12 +273,12 @@ public:
          assert(right_msgs.size() == 1);
 
          if(std::get<0>(e) == Chirality::left) {
-             t.add_message(left_msgs[0], Chirality::left);
              t.add_message(right_msgs[0], Chirality::right);
+             t.add_message(left_msgs[0], Chirality::left);
          } else {
              assert(std::get<0>(e) == Chirality::right);
-             t.add_message(right_msgs[0], Chirality::right);
-             t.add_message(left_msgs[0], Chirality::left);
+             t.add_message(left_msgs[0], Chirality::right);
+             t.add_message(right_msgs[0], Chirality::left);
          }
      }
 
@@ -559,7 +560,7 @@ public:
          
       assert(pairwiseDim1*pairwiseDim2 == p->GetFactor()->size());
 
-      this->lp_->template add_message<PAIRWISE_TRIPLET_MESSAGE_CONTAINER>(p, t, tripletDim1, tripletDim2, tripletDim3);
+      auto* m = this->lp_->template add_message<PAIRWISE_TRIPLET_MESSAGE_CONTAINER>(p, t, tripletDim1, tripletDim2, tripletDim3);
    }
    INDEX GetNumberOfTripletFactors() const { return tripletFactor_.size(); }
 
@@ -579,7 +580,7 @@ public:
    bool AddTighteningTriplet(const INDEX var1, const INDEX var2, const INDEX var3)//, const std::vector<INDEX> pi1, const std::vector<INDEX> pi2, const std::vector<INDEX> pi3)
    {
       assert(var1 < var2 && var2 < var3 && var3 < this->GetNumberOfVariables());
-      if(tripletMap_.find(std::array<INDEX,3>({var1,var2,var3})) == tripletMap_.end()) {
+      if(tripletMap_.count(std::array<INDEX,3>({var1,var2,var3})) == 0) {
          // first check whether necessary pairwise factors are present. If not, add them.
          if(this->pairwiseMap_.find(std::make_tuple(var1,var2)) == this->pairwiseMap_.end()) {
             AddEmptyPairwiseFactor(var1,var2);
@@ -969,6 +970,20 @@ namespace UaiMrfInput {
          build_mrf(mrf_constructor, input);
       }
       return read_suc;
+   }
+
+   template<typename SOLVER, INDEX PROBLEM_CONSTRUCTOR_NO>
+   bool ParseStringDD(const std::string& instance, SOLVER& s)
+   {
+      const bool success = ParseString<SOLVER,PROBLEM_CONSTRUCTOR_NO>(instance, s);
+      auto& mrf = s.template GetProblemConstructor<0>();
+      // decompose mrf into trees automatically.
+      auto trees = mrf.compute_forest_cover();
+      for(auto& tree : trees) {
+          s.GetLP().add_tree(tree);
+      }
+
+      return success;
    }
 
    template<typename SOLVER>

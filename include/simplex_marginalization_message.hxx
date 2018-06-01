@@ -341,31 +341,60 @@ public:
    template<typename LEFT_FACTOR, typename G2>
      void send_message_to_right(const LEFT_FACTOR& l, G2& msg, const REAL omega = 1.0)
      {
-       for(INDEX x1=0; x1<l.dim1(); ++x1) {
-         for(INDEX x2=0; x2<l.dim2(); ++x2) {
-           assert(!std::isnan(l(x1,x2))); 
-         } 
-       }
-       msg -= omega*l;
+         const auto dim1 = l.dim1();
+         const auto dim2 = l.dim2();
+
+         for(std::size_t x1=0; x1<dim1; ++x1) {
+             for(std::size_t x2=0; x2<dim2; ++x2) {
+                 assert(!std::isnan(l(x1,x2))); 
+             } 
+         }
+
+         matrix<REAL> m(dim1, dim2);
+         auto min = std::numeric_limits<REAL>::infinity();
+         for(std::size_t x1=0; x1<dim1; ++x1) {
+             for(std::size_t x2=0; x2<dim2; ++x2) {
+                 const auto val = l(x1,x2);
+                 m(x1,x2) = val;
+                 min = std::min(min, val);
+             } 
+         }
+
+         for(std::size_t x1=0; x1<dim1; ++x1) {
+             for(std::size_t x2=0; x2<dim2; ++x2) {
+                 m(x1,x2) -= min;
+             }
+         }
+
+         msg -= omega*m;
      }
+
    template<typename RIGHT_FACTOR, typename G2>
      void send_message_to_left(const RIGHT_FACTOR& r, G2& msg, const REAL omega = 1.0)
      {
-       matrix<REAL> msgs(r.dim(I1), r.dim(I2));
-       if(I1 == 0 && I2 == 1) {
-         r.min_marginal12(msgs);
-       } else if(I1 == 0 && I2 == 2) {
-         r.min_marginal13(msgs);
-       } else if(I1 == 1 && I2 == 2) {
-         r.min_marginal23(msgs);
-       } else {
-         assert(false);
-       }
-       for(auto it=msgs.begin(); it!=msgs.end(); ++it) {
-         assert(!std::isnan(*it));
-       }
-       msg -= omega*msgs;
-      }
+         matrix<REAL> msgs(r.dim(I1), r.dim(I2));
+         if(I1 == 0 && I2 == 1) {
+             r.min_marginal12(msgs);
+         } else if(I1 == 0 && I2 == 2) {
+             r.min_marginal13(msgs);
+         } else if(I1 == 1 && I2 == 2) {
+             r.min_marginal23(msgs);
+         } else {
+             assert(false);
+         }
+
+         for(auto it=msgs.begin(); it!=msgs.end(); ++it) {
+             assert(!std::isnan(*it));
+         }
+
+         const auto min = msgs.min();
+         for(std::size_t x1=0; x1<msgs.dim1(); ++x1) {
+             for(std::size_t x2=0; x2<msgs.dim2(); ++x2) {
+                 msgs(x1,x2) -= min;
+             }
+         }
+         msg -= omega*msgs;
+     }
 };
 
 } // end namespace LP_MP

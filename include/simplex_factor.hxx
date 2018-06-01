@@ -22,7 +22,14 @@ public:
    UnarySimplexFactor(const std::vector<REAL>& cost) : vector<REAL>(cost.begin(), cost.end()) {}
    UnarySimplexFactor(const INDEX n) : vector<REAL>(n, 0.0) {}
 
+   void print_potential()
+   {
+       for(std::size_t i=0; i<size(); ++i) { std::cout << (*this)[i] << ", "; } 
+       std::cout << "\n";
+   }
+
    REAL LowerBound() const { 
+       //std::cout << "remove me " << this << ": " << (*this)[0] << "," << (*this)[1] << "\n";
       const REAL lb = *std::min_element(this->begin(), this->end()); 
       assert(std::isfinite(lb));
       return lb;
@@ -49,7 +56,7 @@ public:
 
    auto export_variables() { return std::tie(*static_cast<vector<REAL>*>(this)); }
 
-   void init_primal() { primal_ = size(); }
+   void init_primal() { primal_ = std::numeric_limits<INDEX>::max(); }
    INDEX primal() const { return primal_; }
    INDEX& primal() { return primal_; }
    void primal(const INDEX p) { primal_ = p; }
@@ -238,11 +245,14 @@ public:
       return pairwise_(x1,x2);
    }
    REAL LowerBound() const {
+       //std::cout << "remove me: pairwise " << this << " pot: \n";
       REAL lb = std::numeric_limits<REAL>::infinity();
       for(INDEX x1=0; x1<dim1(); ++x1) {
          for(INDEX x2=0; x2<dim2(); ++x2) {
+             //std::cout << (*this)(x1,x2) << ",";
             lb = std::min(lb, (*this)(x1,x2));
          }
+         //std::cout << "\n";
       }
       assert(std::isfinite(lb));
       return lb;
@@ -280,9 +290,10 @@ public:
 
    void init_primal() 
    {
-      primal_[0] = dim1();
-      primal_[1] = dim2();
+      primal_[0] = std::numeric_limits<INDEX>::max();
+      primal_[1] = std::numeric_limits<INDEX>::max();
    }
+
    REAL EvaluatePrimal() const { 
       if(primal_[0] >= dim1() || primal_[1] >= dim2()) {
          return std::numeric_limits<REAL>::infinity();
@@ -371,9 +382,9 @@ public:
    void apply(ARRAY& a) const
    {
       assert(primal_[0] < dim1() && primal_[1] < dim2());
-      a[primal_[0]*dim2() + primal_[1]];
-      a[dim1()*dim2() + primal_[0]];
-      a[dim1()*dim2() + dim1() + primal_[1]]; 
+      a[primal_[0]];
+      a[dim1() + primal_[1]]; 
+      a[dim1() + dim2() + primal_[0]*dim2() + primal_[1]];
    }
 
    template<typename SOLVER>
@@ -489,25 +500,20 @@ public:
    }
    */
 
-   REAL min_marginal12(const INDEX x1, const INDEX x2) const {
-      REAL marg = (*this)(x1,x2,0);
-      for(INDEX x3=1; x3<dim3(); ++x3) {
-         marg = std::min(marg, (*this)(x1,x2,x3));
-      }
-      return marg;
-   }
    template<typename MSG>
    void min_marginal12(MSG& msg) const {
       assert(msg.dim1() == dim1());
       assert(msg.dim2() == dim2());
-      //for(INDEX x1=0; x1<dim1(); ++x1) {
-      //   for(INDEX x2=0; x2<dim2(); ++x2) {
-      //      msg(x1,x2) = std::numeric_limits<REAL>::infinity();
-      //   }
-      //}
       for(INDEX x1=0; x1<dim1(); ++x1) {
          for(INDEX x2=0; x2<dim2(); ++x2) {
-            msg(x1,x2) = min_marginal12(x1,x2);
+            msg(x1,x2) = std::numeric_limits<REAL>::infinity();
+         }
+      }
+      for(INDEX x1=0; x1<dim1(); ++x1) {
+         for(INDEX x2=0; x2<dim2(); ++x2) {
+             for(INDEX x3=0; x3<dim3(); ++x3) {
+                 msg(x1,x2) = std::min( msg(x1,x2), (*this)(x1,x2,x3));
+             }
          }
       }
    }
@@ -516,6 +522,7 @@ public:
    void min_marginal13(MSG& msg) const {
       assert(msg.dim1() == dim1());
       assert(msg.dim2() == dim3());
+
       for(INDEX x1=0; x1<dim1(); ++x1) {
          for(INDEX x3=0; x3<dim3(); ++x3) {
             msg(x1,x3) = std::numeric_limits<REAL>::infinity();
@@ -529,6 +536,7 @@ public:
          }
       }
    }
+
    template<typename MSG>
    void min_marginal23(MSG& msg) const {
       assert(msg.dim1() == dim2());
@@ -538,10 +546,11 @@ public:
             msg(x2,x3) = std::numeric_limits<REAL>::infinity();
          }
       }
+
       for(INDEX x1=0; x1<dim1(); ++x1) {
          for(INDEX x2=0; x2<dim2(); ++x2) {
             for(INDEX x3=0; x3<dim3(); ++x3) {
-               msg(x2,x3) = std::min(msg(x2,x3), (*this)(x1,x2,x3));
+               msg(x2,x3) = std::min(msg(x2,x3),  (*this)(x1,x2,x3));
             }
          }
       }

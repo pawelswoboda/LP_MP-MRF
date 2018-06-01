@@ -28,6 +28,6 @@ target_compile_definitions(HDF5 INTERFACE ${HDF5_DEFINITIONS})
 message(STATUS ${HDF5_LIBRARIES})
 message(STATUS ${HDF5_INCLUDE_DIR})
 
-add_subdirectory(test)
 enable_testing()
+add_subdirectory(test)
 add_subdirectory(src)
