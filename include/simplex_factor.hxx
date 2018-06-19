@@ -30,7 +30,7 @@ public:
 
    REAL LowerBound() const { 
        //std::cout << "remove me " << this << ": " << (*this)[0] << "," << (*this)[1] << "\n";
-      const REAL lb = *std::min_element(this->begin(), this->end()); 
+      const REAL lb = this->min();
       assert(std::isfinite(lb));
       return lb;
    }
@@ -42,6 +42,7 @@ public:
       }
       return (*this)[primal_]; 
    }
+
    void MaximizePotentialAndComputePrimal() 
    {
       if(primal_ >= size()) {
@@ -306,8 +307,8 @@ public:
    {
       if(primal_[0] >= dim1() && primal_[1] >= dim2()) {
          REAL min_val = std::numeric_limits<REAL>::infinity();
-         for(INDEX x1=0; x1<dim1(); ++x1) {
-            for(INDEX x2=0; x2<dim2(); ++x2) {
+         for(std::size_t x1=0; x1<dim1(); ++x1) {
+            for(std::size_t x2=0; x2<dim2(); ++x2) {
                if(min_val >= (*this)(x1,x2)) {
                   min_val = (*this)(x1,x2);
                   primal_[0] = x1;
@@ -317,7 +318,7 @@ public:
          }
       } else if(primal_[0] >= dim1() && primal_[1] < dim2()) {
          REAL min_val = std::numeric_limits<REAL>::infinity();
-         for(INDEX x1=0; x1<dim1(); ++x1) {
+         for(std::size_t x1=0; x1<dim1(); ++x1) {
             if(min_val >= (*this)(x1,primal_[1])) {
                min_val = (*this)(x1,primal_[1]);
                primal_[0] = x1;
@@ -325,7 +326,7 @@ public:
          } 
       } else if(primal_[1] >= dim2() && primal_[0] < dim1()) {
          REAL min_val = std::numeric_limits<REAL>::infinity();
-         for(INDEX x2=0; x2<dim2(); ++x2) {
+         for(std::size_t x2=0; x2<dim2(); ++x2) {
             if(min_val >= (*this)(primal_[0],x2)) {
                min_val = (*this)(primal_[0],x2);
                primal_[1] = x2;

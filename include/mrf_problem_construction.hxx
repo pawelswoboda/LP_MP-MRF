@@ -282,8 +282,6 @@ public:
          }
      }
 
-     t.init();
-
      return t;
   }
 
@@ -346,7 +344,8 @@ public:
         }
         return pairwise_factors_in_trees;
      };
-     assert(check_pairwise_factors_present() == pairwiseIndices.size());
+
+     //assert(check_pairwise_factors_present() == pairwiseIndices.size());
 
      return std::move(trees);
   }

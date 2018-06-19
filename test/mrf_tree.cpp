@@ -25,6 +25,6 @@ int main()
 
     auto trees = mrf.compute_forest_cover();
     test(trees.size() == 1);
-    trees[0].init();
+    trees[0].populate_factors();
     test(trees[0].solve() == 2.0);
 }
