@@ -921,8 +921,8 @@ namespace UaiMrfInput {
                //std::cout << "pairwise potential on (" << var1 << "," << var2 << "):\n";
                for(INDEX l1=0; l1<dim1; ++l1) {
                   for(INDEX l2=0; l2<dim2; ++l2) {
-                     pairwise_cost(l1,l2) = input.function_tables_[i][l2*dim1 + l1];
-               //      std::cout << input.function_tables_[i][l2*dim1 + l1] << " ";
+                     pairwise_cost(l1,l2) = input.function_tables_[i][l1*dim2 + l2];
+               //      std::cout << input.function_tables_[i][l1*dim2 + l2] << " ";
                   }
                //   std::cout << "\n";
                }
