@@ -20,7 +20,7 @@ target_link_libraries(LP_MP-MRF INTERFACE LP_MP)
 add_subdirectory(external/arboricity)
 
 # for opengm
-find_package(HDF5 1.8.15 REQUIRED)
+find_package(HDF5 REQUIRED)
 add_library(HDF5 INTERFACE)
 target_include_directories(HDF5 INTERFACE ${HDF5_INCLUDE_DIR})
 target_link_libraries(HDF5 INTERFACE ${HDF5_LIBRARIES})
