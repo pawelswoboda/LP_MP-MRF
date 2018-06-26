@@ -1,4 +1,7 @@
-# LP_MP-MRF
+LP_MP-MRF
+========
+[![Build Status](https://travis-ci.org/pawelswoboda/LP_MP-MRF.svg?branch=master)](https://travis-ci.org/pawelswoboda/LP_MP-MRF)
+
 Dual decomposition based Markov-Random-Fields solvers.
 
 ## Available solvers
