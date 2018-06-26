@@ -11,4 +11,4 @@
 [submodule "external/LP_MP"]
 	path = external/LP_MP
 	url = https://github.com/pawelswoboda/LP_MP.git
-	branch = frank_wolfe
+	branch = master
