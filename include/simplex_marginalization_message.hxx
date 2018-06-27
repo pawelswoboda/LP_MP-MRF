@@ -234,7 +234,7 @@ public:
 
    // for primal computation as in TRW-S, we need to compute restricted messages as well
    template<typename RIGHT_FACTOR, typename G2>
-      void ReceiveRestrictedMessageFromRight(const RIGHT_FACTOR& r, G2& msg, typename PrimalSolutionStorage::Element rightPrimal) 
+      void ReceiveRestrictedMessageFromRight(const RIGHT_FACTOR& r, G2& msg) 
       {
          throw std::runtime_error("rounding on pairwise factors is not currently supported");
          assert(false);
