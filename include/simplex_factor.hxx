@@ -573,9 +573,9 @@ public:
    INDEX dim3() const { return msg13.dim2(); }
 
    void init_primal() {
-      primal_[0] = dim1();
-      primal_[1] = dim2();
-      primal_[2] = dim3();
+      primal_[0] = std::numeric_limits<INDEX>::max();
+      primal_[1] = std::numeric_limits<INDEX>::max();
+      primal_[2] = std::numeric_limits<INDEX>::max();
    }
    template<class ARCHIVE> void serialize_primal(ARCHIVE& ar) { ar(primal_); }
    template<class ARCHIVE> void serialize_dual(ARCHIVE& ar) 
