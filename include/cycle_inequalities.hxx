@@ -35,12 +35,12 @@ public:
    std::vector<triplet_candidate> search()
    {
       // Initialize adjacency list (filled in later) TODO: only do this when needed
-      std::vector<std::vector<INDEX> > adjacency_list(gm_.GetNumberOfVariables());
+      std::vector<std::vector<INDEX> > adjacency_list(gm_.get_number_of_variables());
 
       // Construct adjacency list for the graph
       // Iterate over all of the edges (we do this by looking at the edge intersection sets)
-      for(size_t factorId=0; factorId<gm_.GetNumberOfPairwiseFactors(); factorId++) {
-         auto vars = gm_.GetPairwiseVariables(factorId);
+      for(size_t factorId=0; factorId<gm_.get_number_of_pairwise_factors(); factorId++) {
+         auto vars = gm_.get_pairwise_variables(factorId);
          // Get the two nodes i & j
          const size_t i=std::get<0>(vars);
          const size_t j=std::get<1>(vars);
@@ -61,14 +61,14 @@ public:
       // Iterate over all of the edge intersection sets
 #pragma omp parallel 
       {
-         std::vector<INDEX> commonNodes(gm_.GetNumberOfVariables()-1);
+         std::vector<INDEX> commonNodes(gm_.get_number_of_variables()-1);
          std::vector<triplet_candidate> triplet_candidates_local;
 #pragma omp for schedule(guided)
-         for(size_t factorId=0; factorId<gm_.GetNumberOfPairwiseFactors(); factorId++) {
-            auto vars = gm_.GetPairwiseVariables(factorId);
+         for(size_t factorId=0; factorId<gm_.get_number_of_pairwise_factors(); factorId++) {
+            auto vars = gm_.get_pairwise_variables(factorId);
             const INDEX i=std::get<0>(vars);
             const INDEX j=std::get<1>(vars);
-            const auto& factor_ij = *gm_.GetPairwiseFactor(i,j)->GetFactor();
+            const auto& factor_ij = *gm_.get_pairwise_factor(i,j)->GetFactor();
             const REAL lb_ij = factor_ij.LowerBound();
 
             // Now find all neighbors of both i and j to see where the triangles are
@@ -82,8 +82,8 @@ public:
                if(!(j<k))
                   continue;
 
-               const auto& factor_ik = *gm_.GetPairwiseFactor(i,k)->GetFactor();
-               const auto& factor_jk = *gm_.GetPairwiseFactor(j,k)->GetFactor();
+               const auto& factor_ik = *gm_.get_pairwise_factor(i,k)->GetFactor();
+               const auto& factor_jk = *gm_.get_pairwise_factor(j,k)->GetFactor();
                const REAL boundIndep = lb_ij + factor_ik.LowerBound() + factor_jk.LowerBound();
                const REAL boundCycle = minimizeTriangle(factor_ij, factor_ik, factor_jk);
 
@@ -474,14 +474,14 @@ template<typename MRF_CONSTRUCTOR, bool EXTENDED>
 std::vector<std::vector<std::vector<bool>>> 
 k_ary_cycle_inequalities_search<MRF_CONSTRUCTOR, EXTENDED>::compute_partitions()
 {
-   std::vector<std::vector<std::vector<bool>>> partitions(gm_.GetNumberOfVariables());
+   std::vector<std::vector<std::vector<bool>>> partitions(gm_.get_number_of_variables());
 #pragma omp parallel
    {
       auto partitions_local = partitions;
 #pragma omp for schedule(guided) nowait
-      for(size_t factorId=0; factorId<gm_.GetNumberOfPairwiseFactors(); factorId++) {
-         auto vars = gm_.GetPairwiseVariables(factorId);
-         const auto& factor = *gm_.GetPairwiseFactor(factorId)->GetFactor();
+      for(size_t factorId=0; factorId<gm_.get_number_of_pairwise_factors(); factorId++) {
+         auto vars = gm_.get_pairwise_variables(factorId);
+         const auto& factor = *gm_.get_pairwise_factor(factorId)->GetFactor();
          const size_t i=std::get<0>(vars);
          const size_t j=std::get<1>(vars);
          assert(i<j);
@@ -647,17 +647,17 @@ template<typename MRF_CONSTRUCTOR, bool EXTENDED>
 void 
 k_ary_cycle_inequalities_search<MRF_CONSTRUCTOR, EXTENDED>::construct_projection_graph(const std::vector<std::vector<std::vector<bool>>> partitions)
 {
-   proj_graph_offsets_ = std::vector<INDEX>(gm_.GetNumberOfVariables());
+   proj_graph_offsets_ = std::vector<INDEX>(gm_.get_number_of_variables());
    proj_graph_offsets_[0] = 0;
-   for(INDEX i=1; i<gm_.GetNumberOfVariables(); i++) {
-      proj_graph_offsets_[i] = gm_.GetNumberOfLabels(i-1);
+   for(INDEX i=1; i<gm_.get_number_of_variables(); i++) {
+      proj_graph_offsets_[i] = gm_.get_number_of_labels(i-1);
       if(EXTENDED) { 
          proj_graph_offsets_[i] += partitions[i-1].size();
       }
    }
 
    std::partial_sum(proj_graph_offsets_.begin(), proj_graph_offsets_.end(), proj_graph_offsets_.begin());
-   INDEX proj_graph_nodes = proj_graph_offsets_.back() + gm_.GetNumberOfLabels(gm_.GetNumberOfVariables()-1);
+   INDEX proj_graph_nodes = proj_graph_offsets_.back() + gm_.get_number_of_labels(gm_.get_number_of_variables()-1);
    if(EXTENDED) {
       proj_graph_nodes += partitions.back().size();
    }
@@ -665,8 +665,8 @@ k_ary_cycle_inequalities_search<MRF_CONSTRUCTOR, EXTENDED>::construct_projection
    proj_graph_to_gm_node_ = std::vector<INDEX>(proj_graph_nodes);
    {
       INDEX c=0;
-      for(INDEX i=0; i<gm_.GetNumberOfVariables(); i++) {
-         INDEX no_proj_graph_nodes_for_label = gm_.GetNumberOfLabels(i);
+      for(INDEX i=0; i<gm_.get_number_of_variables(); i++) {
+         INDEX no_proj_graph_nodes_for_label = gm_.get_number_of_labels(i);
          if(EXTENDED) {
             no_proj_graph_nodes_for_label += partitions[i].size();
          }
@@ -691,17 +691,17 @@ k_ary_cycle_inequalities_search<MRF_CONSTRUCTOR, EXTENDED>::construct_projection
    {
       auto projection_edges_local = projection_edges_;
 #pragma omp for schedule(guided)
-      for(size_t factorId=0; factorId<gm_.GetNumberOfPairwiseFactors(); factorId++) {
+      for(size_t factorId=0; factorId<gm_.get_number_of_pairwise_factors(); factorId++) {
          // Get the two nodes i & j and the edge intersection set. Put in right order.
-         const INDEX i = std::get<0>(gm_.GetPairwiseVariables(factorId));
-         const INDEX j = std::get<1>(gm_.GetPairwiseVariables(factorId));
+         const INDEX i = std::get<0>(gm_.get_pairwise_variables(factorId));
+         const INDEX j = std::get<1>(gm_.get_pairwise_variables(factorId));
 
          // Check to see if i and j have at least two states each -- otherwise, cannot be part of any frustrated edge
-         if(gm_.GetNumberOfLabels(i) <= 1 || gm_.GetNumberOfLabels(j) <= 1)
+         if(gm_.get_number_of_labels(i) <= 1 || gm_.get_number_of_labels(j) <= 1)
             continue;
 
          // For each of their singleton states efficiently compute edge weights
-         const auto& factor_ij = *gm_.GetPairwiseFactor(i,j)->GetFactor(); // better retrieve by factor id
+         const auto& factor_ij = *gm_.get_pairwise_factor(i,j)->GetFactor(); // better retrieve by factor id
 
          const auto row_min = row_minima(factor_ij);
          const auto col_min = column_minima(factor_ij);
@@ -737,7 +737,7 @@ k_ary_cycle_inequalities_search<MRF_CONSTRUCTOR, EXTENDED>::construct_projection
             for(INDEX x1=0; x1<factor_ij.dim1(); ++x1) {
                const INDEX m = proj_graph_offsets_[i] + x1;
                for(INDEX p2=0; p2<partitions[j].size(); ++p2) {
-                  const INDEX n = proj_graph_offsets_[j] + gm_.GetNumberOfLabels(j) + p2;
+                  const INDEX n = proj_graph_offsets_[j] + gm_.get_number_of_labels(j) + p2;
                   const REAL val_s = compute_projection_weight_singleton_1(factor_ij, x1, partitions[j][p2], col_min);
                   add_to_projection_edges(projection_edges_local,n,m,val_s);
                }
@@ -745,7 +745,7 @@ k_ary_cycle_inequalities_search<MRF_CONSTRUCTOR, EXTENDED>::construct_projection
             for(INDEX x2=0; x2<factor_ij.dim2(); ++x2) {
                const INDEX m = proj_graph_offsets_[j] + x2;
                for(INDEX p1=0; p1<partitions[i].size(); ++p1) {
-                  const INDEX n = proj_graph_offsets_[i] + gm_.GetNumberOfLabels(i) + p1;
+                  const INDEX n = proj_graph_offsets_[i] + gm_.get_number_of_labels(i) + p1;
                   const REAL val_s = compute_projection_weight_singleton_2(factor_ij, partitions[i][p1], x2, row_min);
                   add_to_projection_edges(projection_edges_local,n,m,val_s);
                }
@@ -753,9 +753,9 @@ k_ary_cycle_inequalities_search<MRF_CONSTRUCTOR, EXTENDED>::construct_projection
 
             // compute edge weights between general projections
             for(INDEX p1=0; p1<partitions[i].size(); ++p1) {
-               const INDEX n = proj_graph_offsets_[i] + gm_.GetNumberOfLabels(i) + p1;
+               const INDEX n = proj_graph_offsets_[i] + gm_.get_number_of_labels(i) + p1;
                for(INDEX p2=0; p2<partitions[j].size(); ++p2) {
-                  const INDEX m = proj_graph_offsets_[j] + gm_.GetNumberOfLabels(j) + p2;
+                  const INDEX m = proj_graph_offsets_[j] + gm_.get_number_of_labels(j) + p2;
                   const REAL val_s = compute_projection_weight_on_partitions(factor_ij, partitions[i][p1], partitions[j][p2]);
                   add_to_projection_edges(projection_edges_local,n,m,val_s);
                }

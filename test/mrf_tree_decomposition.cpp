@@ -13,19 +13,19 @@ int main()
         auto& mrf = solver.template GetProblemConstructor<0>();
 
         // square with three negative and two positive Potts potentials
-        mrf.AddUnaryFactor(std::vector<REAL>({1.1, 0.0}));
-        mrf.AddUnaryFactor(std::vector<REAL>({0.0, 0.0}));
-        mrf.AddUnaryFactor(std::vector<REAL>({0.0, 0.0}));
-        mrf.AddUnaryFactor(std::vector<REAL>({0.0, 1.0}));
+        mrf.add_unary_factor(std::vector<REAL>({1.1, 0.0}));
+        mrf.add_unary_factor(std::vector<REAL>({0.0, 0.0}));
+        mrf.add_unary_factor(std::vector<REAL>({0.0, 0.0}));
+        mrf.add_unary_factor(std::vector<REAL>({0.0, 1.0}));
 
         auto potts_pot = construct_potts(2,2, 0.0, 1.0);
-        mrf.AddPairwiseFactor(0,1, potts_pot);
+        mrf.add_pairwise_factor(0,1, potts_pot);
         assert(potts_pot(0,0) == 0.0 && potts_pot(0,1) == 1.0 && potts_pot(1,0) == 1.0 && potts_pot(1,1) == 0.0);
-        mrf.AddPairwiseFactor(1,2, potts_pot);
+        mrf.add_pairwise_factor(1,2, potts_pot);
         assert(potts_pot(0,0) == 0.0 && potts_pot(0,1) == 1.0 && potts_pot(1,0) == 1.0 && potts_pot(1,1) == 0.0);
-        mrf.AddPairwiseFactor(2,3, potts_pot);
+        mrf.add_pairwise_factor(2,3, potts_pot);
         assert(potts_pot(0,0) == 0.0 && potts_pot(0,1) == 1.0 && potts_pot(1,0) == 1.0 && potts_pot(1,1) == 0.0);
-        mrf.AddPairwiseFactor(0,3, potts_pot);
+        mrf.add_pairwise_factor(0,3, potts_pot);
         assert(potts_pot(0,0) == 0.0 && potts_pot(0,1) == 1.0 && potts_pot(1,0) == 1.0 && potts_pot(1,1) == 0.0);
 
     };

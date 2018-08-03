@@ -25,19 +25,19 @@ int main()
        SolverType s(sat_solver_options);
        auto& mrf = s.template GetProblemConstructor<0>();
 
-       mrf.AddUnaryFactor(std::vector<REAL>(2,0.0));
-       mrf.AddUnaryFactor(std::vector<REAL>(2,0.0));
-       mrf.AddUnaryFactor(std::vector<REAL>(2,0.0));
-       mrf.AddUnaryFactor(std::vector<REAL>(2,0.0));
-       mrf.AddUnaryFactor(std::vector<REAL>(2,0.0));
+       mrf.add_unary_factor(std::vector<REAL>(2,0.0));
+       mrf.add_unary_factor(std::vector<REAL>(2,0.0));
+       mrf.add_unary_factor(std::vector<REAL>(2,0.0));
+       mrf.add_unary_factor(std::vector<REAL>(2,0.0));
+       mrf.add_unary_factor(std::vector<REAL>(2,0.0));
 
        // make a cycle of length 4 visiting each label once -> one negative Potts and three positive Potts
 
-       mrf.AddPairwiseFactor(0,1,neg_potts);
-       mrf.AddPairwiseFactor(1,2,pos_potts);
-       mrf.AddPairwiseFactor(2,3,pos_potts);
-       mrf.AddPairwiseFactor(3,4,pos_potts);
-       mrf.AddPairwiseFactor(0,4,pos_potts);
+       mrf.add_pairwise_factor(0,1,neg_potts);
+       mrf.add_pairwise_factor(1,2,pos_potts);
+       mrf.add_pairwise_factor(2,3,pos_potts);
+       mrf.add_pairwise_factor(3,4,pos_potts);
+       mrf.add_pairwise_factor(0,4,pos_potts);
 
        s.Solve();
        test(std::abs(s.lower_bound() - 0.0) <= eps);
@@ -52,18 +52,18 @@ int main()
        SolverType s(sat_solver_options);
        auto& mrf = s.template GetProblemConstructor<0>();
 
-       mrf.AddUnaryFactor(std::vector<REAL>(2,0.0));
-       mrf.AddUnaryFactor(std::vector<REAL>(2,0.0));
-       mrf.AddUnaryFactor(std::vector<REAL>(2,0.0));
-       mrf.AddUnaryFactor(std::vector<REAL>(2,0.0));
-       mrf.AddUnaryFactor(std::vector<REAL>(2,0.0));
+       mrf.add_unary_factor(std::vector<REAL>(2,0.0));
+       mrf.add_unary_factor(std::vector<REAL>(2,0.0));
+       mrf.add_unary_factor(std::vector<REAL>(2,0.0));
+       mrf.add_unary_factor(std::vector<REAL>(2,0.0));
+       mrf.add_unary_factor(std::vector<REAL>(2,0.0));
 
        // make a chain of length 4 visiting each label once -> one negative Potts and three positive Potts
 
-       mrf.AddPairwiseFactor(0,1,neg_potts);
-       mrf.AddPairwiseFactor(1,2,pos_potts);
-       mrf.AddPairwiseFactor(2,3,pos_potts);
-       mrf.AddPairwiseFactor(3,4,pos_potts);
+       mrf.add_pairwise_factor(0,1,neg_potts);
+       mrf.add_pairwise_factor(1,2,pos_potts);
+       mrf.add_pairwise_factor(2,3,pos_potts);
+       mrf.add_pairwise_factor(3,4,pos_potts);
 
        s.Solve();
        test(std::abs(s.lower_bound() - 0.0) <= eps);
@@ -78,21 +78,21 @@ int main()
         SatSolverType s_sat(solver_options);
         auto& mrf_sat = s_sat.template GetProblemConstructor<0>();
 
-        mrf_sat.AddUnaryFactor(std::vector<REAL>(2,0.0));
-        mrf_sat.AddUnaryFactor(std::vector<REAL>(2,0.0));
-        mrf_sat.AddUnaryFactor(std::vector<REAL>(2,0.0));
-        mrf_sat.AddUnaryFactor(std::vector<REAL>(2,0.0));
+        mrf_sat.add_unary_factor(std::vector<REAL>(2,0.0));
+        mrf_sat.add_unary_factor(std::vector<REAL>(2,0.0));
+        mrf_sat.add_unary_factor(std::vector<REAL>(2,0.0));
+        mrf_sat.add_unary_factor(std::vector<REAL>(2,0.0));
 
         // make a cycle of length 4 visiting each label once -> one negative Potts and three positive Potts
-        mrf_sat.AddPairwiseFactor(0,1,neg_potts);
-        mrf_sat.AddPairwiseFactor(1,2,pos_potts);
-        mrf_sat.AddPairwiseFactor(2,3,pos_potts);
-        mrf_sat.AddPairwiseFactor(0,3,pos_potts);
+        mrf_sat.add_pairwise_factor(0,1,neg_potts);
+        mrf_sat.add_pairwise_factor(1,2,pos_potts);
+        mrf_sat.add_pairwise_factor(2,3,pos_potts);
+        mrf_sat.add_pairwise_factor(0,3,pos_potts);
 
-        mrf_sat.AddTighteningTriplet(0,1,2);
-        mrf_sat.AddTighteningTriplet(0,1,3);
-        mrf_sat.AddTighteningTriplet(0,2,3);
-        mrf_sat.AddTighteningTriplet(1,2,3);
+        mrf_sat.add_tightening_triplet(0,1,2);
+        mrf_sat.add_tightening_triplet(0,1,3);
+        mrf_sat.add_tightening_triplet(0,2,3);
+        mrf_sat.add_tightening_triplet(1,2,3);
 
         s_sat.Solve();
         test(std::abs(s_sat.lower_bound() - 1.0) <= eps);

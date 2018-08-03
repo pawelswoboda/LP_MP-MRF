@@ -8,8 +8,6 @@
 #include "simplex_marginalization_message.hxx"
 #include "mrf_problem_construction.hxx"
 
-#include "parse_rules.h"
-
 // this file contains solvers for graphical models, among them SRMP and MPLP
 
 namespace LP_MP {
@@ -26,7 +24,7 @@ struct FMC_SRMP { // equivalent to SRMP or TRWS
    using FactorList = meta::list< UnaryFactor, PairwiseFactor >;
    using MessageList = meta::list< UnaryPairwiseMessageLeftContainer, UnaryPairwiseMessageRightContainer >;
 
-   using mrf = StandardMrfConstructor<FMC_SRMP,0,1,0,1>;
+   using mrf = mrf_constructor<FMC_SRMP,0,1,0,1>;
    using ProblemDecompositionList = meta::list<mrf>;
 };
 
@@ -49,8 +47,8 @@ struct FMC_SRMP_T { // equivalent to SRMP or TRWS
          PairwiseTriplet12MessageContainer, PairwiseTriplet13MessageContainer, PairwiseTriplet23MessageContainer
          >;
 
-   using mrf = StandardMrfConstructor<FMC_SRMP_T,0,1,0,1>;
-   using tighteningMrf = TighteningMRFProblemConstructor<mrf,2,2,3,4>;
+   using mrf = mrf_constructor<FMC_SRMP_T,0,1,0,1>;
+   using tighteningMrf = tightening_mrf_constructor<mrf,2,2,3,4>;
    using ProblemDecompositionList = meta::list<tighteningMrf>;
 };
 
@@ -68,7 +66,7 @@ struct FMC_MPLP {
    using FactorList = meta::list< UnaryFactor, PairwiseFactor >;
    using MessageList = meta::list< UnaryPairwiseMessageLeftContainer, UnaryPairwiseMessageRightContainer >;
 
-   using mrf = StandardMrfConstructor<FMC_MPLP,0,1,0,1>;
+   using mrf = mrf_constructor<FMC_MPLP,0,1,0,1>;
    using ProblemDecompositionList = meta::list<mrf>;
 };
 

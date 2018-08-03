@@ -1,4 +1,5 @@
 #include "test_mrf.hxx"
+#include "mrf_uai_input.h"
 
 using namespace LP_MP;
 
@@ -11,15 +12,16 @@ int main()
 
     {
         SolverType s(solver_options);
-        UaiMrfInput::ParseString<SolverType,0>(uai_test_input, s); 
+        auto input = mrf_uai_input::parse_string(uai_test_input); 
+        s.template GetProblemConstructor<0>().construct(input);
         s.Solve();
         test(std::abs(s.lower_bound() - 0.644) < LP_MP::eps);
     }
     {
         SolverType s(solver_options_2);
-        UaiMrfInput::ParseString<SolverType,0>(uai_test_input_2, s); 
+        auto input = mrf_uai_input::parse_string(uai_test_input_2); 
+        s.template GetProblemConstructor<0>().construct(input);
         s.Solve();
-
         test(std::abs(s.lower_bound() - 17) < LP_MP::eps);
     }
 }

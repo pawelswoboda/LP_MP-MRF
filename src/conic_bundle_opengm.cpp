@@ -2,11 +2,10 @@
 #include "graphical_model.h"
 #include "visitors/standard_visitor.hxx"
 #include "LP_conic_bundle.hxx"
-#include "hdf5_routines.hxx"
+#include "mrf_opengm_input.h"
 
 using namespace LP_MP;
 int main(int argc, char** argv) {
 MpRoundingSolver<Solver<LP_conic_bundle<FMC_SRMP>,StandardVisitor>> solver(argc,argv);
-solver.ReadProblem(ParseOpenGM_DD<Solver<LP_conic_bundle<FMC_SRMP>,StandardVisitor>>);
-return solver.Solve();
+auto input = mrf_opengm_input::parse_file(solver.get_input_file());solver.template GetProblemConstructor<0>().construct(input);auto trees = solver.template GetProblemConstructor<0>().compute_forest_cover();for(auto& tree : trees) { solver.GetLP().add_tree(tree); }return solver.Solve();
 }

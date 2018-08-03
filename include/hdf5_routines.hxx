@@ -139,7 +139,7 @@ namespace LP_MP {
                unaryCost[i] = values[c+i];
             }
             c += c1;
-            mrf.AddUnaryFactor(i1,unaryCost);
+            mrf.add_unary_factor(i1,unaryCost);
          } else if(factor.size() == 3) {
             const INDEX i1 = factor[1];
             const INDEX i2 = factor[2];
@@ -153,7 +153,7 @@ namespace LP_MP {
                }
             }
             c += c1*c2;
-            mrf.AddPairwiseFactor(i1,i2,pairwiseCost);
+            mrf.add_pairwise_factor(i1,i2,pairwiseCost);
          } else {
             assert(false);
          }
@@ -207,7 +207,7 @@ namespace LP_MP {
          for(INDEX l=0; l<gm[f].numberOfLabels(0); ++l){
             unaryCost[l] = gm[f](std::array<INDEX,1>({l}).begin()); 
          } 
-         mrf.AddUnaryFactor(i,unaryCost);
+         mrf.add_unary_factor(i,unaryCost);
       } 
       else if(gm[f].numberOfVariables()==2){
          const INDEX i = gm.variableOfFactor(f,0);
@@ -218,7 +218,7 @@ namespace LP_MP {
                pairwiseCost(l1, l2) = gm[f](std::array<INDEX,2>({l1,l2}).begin()); 
             }
          }
-         mrf.AddPairwiseFactor(i,j,pairwiseCost);
+         mrf.add_pairwise_factor(i,j,pairwiseCost);
       }
       else{
          std::cout << "Factors of order higher than 2 are so far not supported !" <<std::endl;
@@ -270,14 +270,14 @@ namespace LP_MP {
          for(INDEX l=0; l<gm[f].numberOfLabels(0); ++l){
             unaryCost[l] = gm[f](std::array<INDEX,1>({l}).begin()); 
          } 
-         mrf.AddUnaryFactor(i,unaryCost);
+         mrf.add_unary_factor(i,unaryCost);
       } 
       else if(gm[f].numberOfVariables()==2){
          const INDEX i = gm.variableOfFactor(f,0);
          const INDEX j = gm.variableOfFactor(f,1);
          assert( gm[f](std::array<INDEX,2>({0,0}).begin()) == 0.0 );
          const REAL diff_cost = gm[f](std::array<INDEX,2>({0,1}).begin());
-         mrf.AddPairwiseFactor(i,j,diff_cost);
+         mrf.add_pairwise_factor(i,j,diff_cost);
       }
       else{
          std::cout << "Factors of order higher than 2 are so far not supported !" <<std::endl;
@@ -325,7 +325,7 @@ namespace LP_MP {
          const INDEX j = gm.variableOfFactor(f,1);
          assert( gm[f](std::array<INDEX,2>({0,0}).begin()) == 0.0 );
          const REAL diff_cost = gm[f](std::array<INDEX,2>({0,1}).begin());
-         mc.AddUnaryFactor(i,j,diff_cost);
+         mc.add_unary_factor(i,j,diff_cost);
       } 
 
       return true; 

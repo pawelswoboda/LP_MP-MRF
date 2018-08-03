@@ -89,15 +89,15 @@ int main()
      auto& mrf = s.template GetProblemConstructor<0>();
      s.GetLP().set_reparametrization(LPReparametrizationMode::DampedUniform); // setting reparametrization mode to anisotropic leads to suboptimal fixed point
 
-      mrf.AddUnaryFactor({0,0});
-      mrf.AddUnaryFactor({0,0});
-      mrf.AddUnaryFactor({0,0});
-      mrf.AddUnaryFactor({0,0});
+      mrf.add_unary_factor({0,0});
+      mrf.add_unary_factor({0,0});
+      mrf.add_unary_factor({0,0});
+      mrf.add_unary_factor({0,0});
       
-      mrf.AddPairwiseFactor(0,1,negPotts2);
-      mrf.AddPairwiseFactor(1,2,posPotts2);
-      mrf.AddPairwiseFactor(2,3,posPotts2);
-      mrf.AddPairwiseFactor(0,3,posPotts2);
+      mrf.add_pairwise_factor(0,1,negPotts2);
+      mrf.add_pairwise_factor(1,2,posPotts2);
+      mrf.add_pairwise_factor(2,3,posPotts2);
+      mrf.add_pairwise_factor(0,3,posPotts2);
 
       k_ary_cycle_inequalities_search<typename std::remove_reference<decltype(mrf)>::type> cycle_search(mrf);
 
@@ -117,18 +117,18 @@ int main()
      auto& mrf = s.template GetProblemConstructor<0>();
      s.GetLP().set_reparametrization(LPReparametrizationMode::DampedUniform); // setting reparametrization mode to anisotropic leads to suboptimal fixed point
 
-      mrf.AddUnaryFactor({0,0});
-      mrf.AddUnaryFactor({0,0});
-      mrf.AddUnaryFactor({0,0});
-      mrf.AddUnaryFactor({0,0});
-      mrf.AddUnaryFactor({0,0});
+      mrf.add_unary_factor({0,0});
+      mrf.add_unary_factor({0,0});
+      mrf.add_unary_factor({0,0});
+      mrf.add_unary_factor({0,0});
+      mrf.add_unary_factor({0,0});
 
       
-      mrf.AddPairwiseFactor(0,1,negPotts2);
-      mrf.AddPairwiseFactor(1,2,posPotts2);
-      mrf.AddPairwiseFactor(2,3,posPotts2);
-      mrf.AddPairwiseFactor(3,4,posPotts2);
-      mrf.AddPairwiseFactor(0,4,posPotts2);
+      mrf.add_pairwise_factor(0,1,negPotts2);
+      mrf.add_pairwise_factor(1,2,posPotts2);
+      mrf.add_pairwise_factor(2,3,posPotts2);
+      mrf.add_pairwise_factor(3,4,posPotts2);
+      mrf.add_pairwise_factor(0,4,posPotts2);
 
       k_ary_cycle_inequalities_search<typename std::remove_reference<decltype(mrf)>::type> cycle_search(mrf);
 
@@ -162,16 +162,16 @@ int main()
      auto& mrf = s.template GetProblemConstructor<0>();
      s.GetLP().set_reparametrization(LPReparametrizationMode::DampedUniform); // setting reparametrization mode to anisotropic leads to suboptimal fixed point
 
-      mrf.AddUnaryFactor({0,0,0,0});
-      mrf.AddUnaryFactor({0,0,0,0});
-      mrf.AddUnaryFactor({0,0,0,0});
-      mrf.AddUnaryFactor({0,0,0,0});
+      mrf.add_unary_factor({0,0,0,0});
+      mrf.add_unary_factor({0,0,0,0});
+      mrf.add_unary_factor({0,0,0,0});
+      mrf.add_unary_factor({0,0,0,0});
 
       
-      mrf.AddPairwiseFactor(0,1,negPotts4);
-      mrf.AddPairwiseFactor(1,2,posPotts4);
-      mrf.AddPairwiseFactor(2,3,posPotts4);
-      mrf.AddPairwiseFactor(0,3,posPotts4);
+      mrf.add_pairwise_factor(0,1,negPotts4);
+      mrf.add_pairwise_factor(1,2,posPotts4);
+      mrf.add_pairwise_factor(2,3,posPotts4);
+      mrf.add_pairwise_factor(0,3,posPotts4);
 
       k_ary_cycle_inequalities_search<typename std::remove_reference<decltype(mrf)>::type,false> cycle_search(mrf);
       k_ary_cycle_inequalities_search<typename std::remove_reference<decltype(mrf)>::type,true> cycle_search2(mrf);
@@ -195,18 +195,18 @@ int main()
      auto& mrf = s.template GetProblemConstructor<0>();
      s.GetLP().set_reparametrization(LPReparametrizationMode::DampedUniform); // setting reparametrization mode to anisotropic leads to suboptimal fixed point
 
-      mrf.AddUnaryFactor({0,0,0,0});
-      mrf.AddUnaryFactor({0,0,0,0});
-      mrf.AddUnaryFactor({0,0,0,0});
-      mrf.AddUnaryFactor({0,0,0,0});
-      mrf.AddUnaryFactor({0,0,0,0});
+      mrf.add_unary_factor({0,0,0,0});
+      mrf.add_unary_factor({0,0,0,0});
+      mrf.add_unary_factor({0,0,0,0});
+      mrf.add_unary_factor({0,0,0,0});
+      mrf.add_unary_factor({0,0,0,0});
 
       
-      mrf.AddPairwiseFactor(0,1,negPotts4);
-      mrf.AddPairwiseFactor(1,2,posPotts4);
-      mrf.AddPairwiseFactor(2,3,posPotts4);
-      mrf.AddPairwiseFactor(3,4,posPotts4);
-      mrf.AddPairwiseFactor(0,4,posPotts4);
+      mrf.add_pairwise_factor(0,1,negPotts4);
+      mrf.add_pairwise_factor(1,2,posPotts4);
+      mrf.add_pairwise_factor(2,3,posPotts4);
+      mrf.add_pairwise_factor(3,4,posPotts4);
+      mrf.add_pairwise_factor(0,4,posPotts4);
 
       k_ary_cycle_inequalities_search<typename std::remove_reference<decltype(mrf)>::type,false> cycle_search(mrf);
       k_ary_cycle_inequalities_search<typename std::remove_reference<decltype(mrf)>::type,true> cycle_search2(mrf);

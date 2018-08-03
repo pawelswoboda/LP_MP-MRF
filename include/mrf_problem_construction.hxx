@@ -3,19 +3,19 @@
 
 #include "solver.hxx"
 #include "cycle_inequalities.hxx"
-#include "parse_rules.h"
-#include "pegtl/parse.hh"
 #include "tree_decomposition.hxx"
 #include "arboricity.h"
+#include "mrf_input.h"
 
 #include <string>
+#include <functional>
 
 namespace LP_MP {
 
 // expects simplex factor as unary and pairwise factors and marg message such that unary factor is on the left side and pairwise factor is on the right side
 // possibly use static inheritance instead of virtual functions
 template<class FACTOR_MESSAGE_CONNECTION, INDEX UNARY_FACTOR_NO, INDEX PAIRWISE_FACTOR_NO, INDEX LEFT_MESSAGE_NO, INDEX RIGHT_MESSAGE_NO>
-class MRFProblemConstructor {
+class mrf_constructor {
 public:
    using FMC = FACTOR_MESSAGE_CONNECTION;
 
@@ -30,36 +30,40 @@ public:
 
 
    template<typename SOLVER>
-   MRFProblemConstructor(SOLVER& solver) : lp_(&solver.GetLP()) {}
+   mrf_constructor(SOLVER& solver) : lp_(&solver.GetLP()) {}
 
-   virtual void ConstructUnaryFactor(UnaryFactorType& u, const std::vector<REAL>& cost) = 0;
-   virtual void ConstructPairwiseFactor(PairwiseFactorType& p, const INDEX leftDim, const INDEX rightDim) = 0;
-   virtual void ConstructRightUnaryPairwiseMessage(LP<FMC>* lp, UnaryFactorContainer* const right, PairwiseFactorContainer* const p) = 0;
-   virtual void ConstructLeftUnaryPairwiseMessage(LP<FMC>* lp, UnaryFactorContainer* const right, PairwiseFactorContainer* const p) = 0;
+   mrf_constructor(LP<FMC>* lp) : lp_(lp) {}
 
-   UnaryFactorContainer* AddUnaryFactor(const std::vector<REAL>& cost)
+   template<typename T>
+   UnaryFactorContainer* add_unary_factor(const std::initializer_list<T> c)
    {
-      return AddUnaryFactor(unaryFactor_.size(), cost);
+       return add_unary_factor(c.begin(), c.end());
    }
-   UnaryFactorContainer* AddUnaryFactor(const INDEX node_number, const std::vector<REAL>& cost)
+
+   template<typename ITERATOR>
+   UnaryFactorContainer* add_unary_factor(ITERATOR cost_begin, ITERATOR cost_end)
    {
-      auto* u = lp_->template add_factor<UnaryFactorContainer>(cost.size());
-      ConstructUnaryFactor( *(u->GetFactor()), cost );
-      if(node_number >= unaryFactor_.size()) {
-         unaryFactor_.resize(node_number+1,nullptr);
-      } else {
-         if(unaryFactor_[node_number] != nullptr) { throw std::runtime_error("unary factor " + std::to_string(node_number) + " already present"); }
-      }
-      unaryFactor_[node_number] = u;
-      if(node_number > 0 && unaryFactor_[node_number-1]) { // fails for non-contiguous access
-         lp_->AddFactorRelation(unaryFactor_[node_number-1], unaryFactor_[node_number]);
+      auto* u = lp_->template add_factor<UnaryFactorContainer>(cost_begin, cost_end);
+      unaryFactor_.push_back(u);
+
+      if(unaryFactor_.size() > 1) {
+         lp_->AddFactorRelation(unaryFactor_[unaryFactor_.size()-2], u);
       } 
 
-      return u;
+      return u; 
+
    }
+
+   template<typename VECTOR>
+   UnaryFactorContainer* add_unary_factor(const VECTOR& cost)
+   {
+       return add_unary_factor(cost.begin(), cost.end());
+   }
+   
    // unary factor was created elsewhere, let mrf know it
    void RegisterUnaryFactor(const INDEX node_number, UnaryFactorContainer* u)
    {
+       assert(false);
       if(node_number >= unaryFactor_.size()) {
          unaryFactor_.resize(node_number+1,nullptr);
       } else {
@@ -67,22 +71,25 @@ public:
       }
       unaryFactor_[node_number] = u;
    }
-   template<typename COST>
-   PairwiseFactorContainer* AddPairwiseFactor(INDEX var1, INDEX var2, const COST& cost)
+
+   template<typename MATRIX>
+   PairwiseFactorContainer* add_pairwise_factor(const std::size_t var1, const std::size_t var2, const MATRIX& cost)
    { 
-      //if(var1 > var2) std::swap(var1,var2);
       assert(var1<var2);
-      assert(!HasPairwiseFactor(var1,var2));
-      //assert(cost.size() == GetNumberOfLabels(var1) * GetNumberOfLabels(var2));
-      //assert(pairwiseMap_.find(std::make_tuple(var1,var2)) == pairwiseMap_.end());
-      //PairwiseFactorContainer* p = new PairwiseFactorContainer(PairwiseFactor(cost), cost);
-      auto* p = lp_->template add_factor<PairwiseFactorContainer>(GetNumberOfLabels(var1), GetNumberOfLabels(var2), cost);
-      ConstructPairwiseFactor(*(p->GetFactor()), var1, var2);
+      assert(!has_pairwise_factor(var1,var2));
+      auto* p = lp_->template add_factor<PairwiseFactorContainer>(get_number_of_labels(var1), get_number_of_labels(var2));
+      for(std::size_t i=0; i<get_number_of_labels(var1); ++i) {
+          for(std::size_t j=0; j<get_number_of_labels(var2); ++j) {
+              p->GetFactor()->cost(i,j) = cost(i,j);
+          }
+      }
       pairwiseFactor_.push_back(p);
       pairwiseIndices_.push_back(std::array<INDEX,2>({var1,var2}));
       const INDEX factorId = pairwiseFactor_.size()-1;
       pairwiseMap_.insert(std::make_pair(std::make_tuple(var1,var2), factorId));
-      LinkUnaryPairwiseFactor(unaryFactor_[var1], p, unaryFactor_[var2]);
+
+      lp_->template add_message<LeftMessageContainer>(this->get_unary_factor(var1), p);
+      lp_->template add_message<RightMessageContainer>(this->get_unary_factor(var2), p);
 
       lp_->AddFactorRelation(unaryFactor_[var1], p);
       lp_->AddFactorRelation(p, unaryFactor_[var2]);
@@ -90,26 +97,19 @@ public:
       return p;
    }
 
-   void LinkUnaryPairwiseFactor(UnaryFactorContainer* const left, PairwiseFactorContainer* const p, UnaryFactorContainer* right)
-   {
-      ConstructLeftUnaryPairwiseMessage(lp_, left, p);
-      ConstructRightUnaryPairwiseMessage(lp_, right, p);
-   }
-
-
-   UnaryFactorContainer* GetUnaryFactor(const INDEX i) const { assert(i<unaryFactor_.size()); return unaryFactor_[i]; }
-   PairwiseFactorContainer* GetPairwiseFactor(const INDEX i) const { assert(i<pairwiseFactor_.size()); return pairwiseFactor_[i]; }
-   PairwiseFactorContainer* GetPairwiseFactor(const INDEX i, const INDEX j) const { 
+   UnaryFactorContainer* get_unary_factor(const INDEX i) const { assert(i<unaryFactor_.size()); return unaryFactor_[i]; }
+   PairwiseFactorContainer* get_pairwise_factor(const INDEX i) const { assert(i<pairwiseFactor_.size()); return pairwiseFactor_[i]; }
+   PairwiseFactorContainer* get_pairwise_factor(const INDEX i, const INDEX j) const { 
       assert(i<j);    
       assert(j<unaryFactor_.size());
-      const INDEX factor_id = GetPairwiseFactorId(i,j);
+      const INDEX factor_id = get_pairwise_factor_id(i,j);
       return pairwiseFactor_[factor_id]; 
    }
 
    LeftMessageContainer* get_left_message(const INDEX i, const INDEX j) const
    {
       assert(i < j);
-      auto* f = GetPairwiseFactor(i,j);
+      auto* f = get_pairwise_factor(i,j);
       auto msgs = f->template get_messages<LeftMessageContainer>();
       assert(msgs.size() == 1);
       return msgs[0];
@@ -118,24 +118,24 @@ public:
    RightMessageContainer* get_right_message(const INDEX i, const INDEX j) const
    {
       assert(i < j);
-      auto* f = GetPairwiseFactor(i,j);
+      auto* f = get_pairwise_factor(i,j);
       auto msgs = f->template get_messages<RightMessageContainer>();
       assert(msgs.size() == 1);
       return msgs[0];
    }
 
-   INDEX GetNumberOfVariables() const 
+   INDEX get_number_of_variables() const 
    { 
       assert(!(unaryFactor_.size() == 0 && pairwiseFactor_.size() > 0)); 
       return unaryFactor_.size(); 
    } // note: this is not a good idea, if unaryFactors are populated elsewhere: take maximum in pairwise factor indices then.
-   INDEX GetPairwiseFactorId(const INDEX var1, const INDEX var2) const 
+   INDEX get_pairwise_factor_id(const INDEX var1, const INDEX var2) const 
    {
       assert(var1<var2);
       assert(pairwiseMap_.find(std::make_tuple(var1,var2)) != pairwiseMap_.end());
       return pairwiseMap_.find(std::make_tuple(var1,var2))->second; 
    }
-   bool HasPairwiseFactor(const INDEX var1, const INDEX var2) const
+   bool has_pairwise_factor(const INDEX var1, const INDEX var2) const
    {
       assert(var1<var2);
       if(pairwiseMap_.find(std::make_tuple(var1,var2)) != pairwiseMap_.end()) { 
@@ -144,13 +144,13 @@ public:
          return false;
       }
    }
-   INDEX GetNumberOfPairwiseFactors() const { return pairwiseFactor_.size(); }
-   std::array<INDEX,2> GetPairwiseVariables(const INDEX factorNo) const { assert(factorNo < pairwiseIndices_.size()); return pairwiseIndices_[factorNo]; }
-   INDEX GetNumberOfLabels(const INDEX i) const { assert(i < unaryFactor_.size()); return unaryFactor_[i]->GetFactor()->size(); }
+   INDEX get_number_of_pairwise_factors() const { return pairwiseFactor_.size(); }
+   std::array<INDEX,2> get_pairwise_variables(const INDEX factorNo) const { assert(factorNo < pairwiseIndices_.size()); return pairwiseIndices_[factorNo]; }
+   INDEX get_number_of_labels(const INDEX i) const { assert(i < unaryFactor_.size()); return unaryFactor_[i]->GetFactor()->size(); }
    REAL GetPairwiseValue(const INDEX factorId, const INDEX i1, const INDEX i2) const
    {
-      assert(i1 < GetNumberOfLabels( GetPairwiseVariables(factorId)[0] ));
-      assert(i2 < GetNumberOfLabels( GetPairwiseVariables(factorId)[1] ));
+      assert(i1 < get_number_of_labels( get_pairwise_variables(factorId)[0] ));
+      assert(i2 < get_number_of_labels( get_pairwise_variables(factorId)[1] ));
       return (*pairwiseFactor_[factorId]->GetFactor())(i1,i2);
    }
 
@@ -304,7 +304,7 @@ public:
 
      std::vector<int> parents(unaryFactor_.size());
      for(INDEX k=0; k<forest_num; ++k) {
-        g.GetForestParents(k, parents.data()); // possible GetForestEdges will return pairwise ids, hence GetPairwiseFactor(id) then can be called, which is faster
+        g.GetForestParents(k, parents.data()); // possible GetForestEdges will return pairwise ids, hence get_pairwise_factor(id) then can be called, which is faster
 
         UnionFind uf(unaryFactor_.size());
         for(INDEX i=0; i<parents.size(); ++i) {
@@ -322,7 +322,7 @@ public:
               const INDEX tree_id = contiguous_ids[uf.find(i)];
               const INDEX j = parents[i];
               assert(tree_id == contiguous_ids[uf.find(j)]);
-              PairwiseFactorContainer* p = GetPairwiseFactor(std::min(i,j), std::max(i,j));
+              PairwiseFactorContainer* p = get_pairwise_factor(std::min(i,j), std::max(i,j));
               pairwise[tree_id].push_back(p);
            } 
         }
@@ -350,6 +350,22 @@ public:
      return std::move(trees);
   }
 
+  void construct(const mrf_input& input)
+  {
+      // first input the unaries, as pairwise potentials need them to be able to link to them
+      for(std::size_t i=0; i<input.no_variables(); ++i) {
+          this->add_unary_factor(input.unaries[i]);
+      }
+
+      assert(input.pairwise_indices.size() == input.pairwise_values.dim1());
+      for(std::size_t i=0; i<input.pairwise_indices.size(); ++i) {
+          const auto var1 = input.pairwise_indices[i][0];
+          const auto var2 = input.pairwise_indices[i][1];
+          auto pairwise_cost = input.pairwise_values[i];
+          this->add_pairwise_factor(var1,var2, pairwise_cost);
+      }
+  }
+
 protected:
    std::vector<UnaryFactorContainer*> unaryFactor_;
    std::vector<PairwiseFactorContainer*> pairwiseFactor_;
@@ -363,133 +379,15 @@ protected:
    LP<FMC>* lp_;
 };
 
-// overloads virtual functions above for standard SimplexFactor and SimplexMarginalizationMessage
-template<class FACTOR_MESSAGE_CONNECTION, INDEX UNARY_FACTOR_NO, INDEX PAIRWISE_FACTOR_NO, INDEX LEFT_MESSAGE_NO, INDEX RIGHT_MESSAGE_NO>
-class StandardMrfConstructor : public MRFProblemConstructor<FACTOR_MESSAGE_CONNECTION, UNARY_FACTOR_NO, PAIRWISE_FACTOR_NO, LEFT_MESSAGE_NO, RIGHT_MESSAGE_NO>
-{
-public:
-using FMC = FACTOR_MESSAGE_CONNECTION;
-   using MRFProblemConstructor<FMC, UNARY_FACTOR_NO, PAIRWISE_FACTOR_NO, LEFT_MESSAGE_NO, RIGHT_MESSAGE_NO>::MRFProblemConstructor;
-   // this is not nice: how to import all aliases directly here? Is it possible at all, while base class is parametrized by templates?
-   using BaseConstructor = MRFProblemConstructor<FMC, UNARY_FACTOR_NO, PAIRWISE_FACTOR_NO, LEFT_MESSAGE_NO, RIGHT_MESSAGE_NO>;
-   using UnaryFactorType = typename BaseConstructor::UnaryFactorType;
-   using UnaryFactorContainer = typename BaseConstructor::UnaryFactorContainer;
-   using PairwiseFactorType = typename BaseConstructor::PairwiseFactorType;
-   using PairwiseFactorContainer = typename BaseConstructor::PairwiseFactorContainer;
-   using RightMessageContainer = typename BaseConstructor::RightMessageContainer;
-   using LeftMessageContainer = typename BaseConstructor::LeftMessageContainer;
-   using RightMessageType = typename BaseConstructor::RightMessageType;
-   using LeftMessageType = typename BaseConstructor::LeftMessageType;
-
-   void ConstructUnaryFactor(UnaryFactorType& u, const std::vector<REAL>& cost) 
-   { 
-      for(INDEX i=0; i<cost.size(); ++i) {
-         u[i] = cost[i];
-      }
-   }
-
-   virtual void ConstructPairwiseFactor(PairwiseFactorType& p, const INDEX i1, const INDEX i2) {} // nothing needs to be done
-
-   void ConstructRightUnaryPairwiseMessage(LP<FMC>* lp, UnaryFactorContainer* const right, PairwiseFactorContainer* const p)
-   { 
-      const INDEX rightDim = right->GetFactor()->size();
-      const INDEX leftDim = p->GetFactor()->dim1();
-
-      lp->template add_message<RightMessageContainer>(right, p, leftDim, rightDim);
-   }
-
-   void ConstructLeftUnaryPairwiseMessage(LP<FMC>* lp, UnaryFactorContainer* const left, PairwiseFactorContainer* const p)
-   {
-      const INDEX leftDim = left->GetFactor()->size();
-      const INDEX rightDim = p->GetFactor()->dim2();
-
-      lp->template add_message<LeftMessageContainer>(left, p, leftDim, rightDim);
-   }
-};
-
-// assumes underlying label space comes from an assignment problem on a bipartite graph, where certain nodes corresponds to unaries in the graphical model. Should inherit from StandardMrfConstructor
-// to do:move to the graph matching project
-template<class MRF_PROBLEM_CONSTRUCTOR>
-class AssignmentGmConstructor : public MRF_PROBLEM_CONSTRUCTOR
-{
-public:
-   using PairwiseFactorType = typename MRF_PROBLEM_CONSTRUCTOR::PairwiseFactorType;
-
-   template<typename SOLVER>
-   AssignmentGmConstructor(SOLVER& pd) : MRF_PROBLEM_CONSTRUCTOR(pd) {}
-
-   void SetGraph(const std::vector<std::vector<INDEX>> graph) { graph_ = graph; }
-
-   virtual void ConstructPairwiseFactor(PairwiseFactorType& p, const INDEX i1, const INDEX i2) 
-   { 
-      assert(i1 < graph_.size()+1 && i2 < graph_.size()+1);
-      assert(i1 < i2);
-
-      const INDEX dim1 = this->GetNumberOfLabels(i1);
-      const INDEX dim2 = this->GetNumberOfLabels(i2);
-      assert(dim1 == p.dim1() && dim2 == p.dim2());
-
-      if(i1 < graph_.size() && i2 < graph_.size()) {
-         // put infinities on diagonal
-         assert(this->GetNumberOfLabels(i1) == graph_[i1].size() + 1);
-         assert(this->GetNumberOfLabels(i2) == graph_[i2].size() + 1);
-         for(INDEX x1=0; x1<this->GetNumberOfLabels(i1)-1; ++x1) { // last label is non-assignment
-            for(INDEX x2=0; x2<this->GetNumberOfLabels(i2)-1; ++x2) { // last label is non-assignment
-               if(graph_[i1][x1] == graph_[i2][x2]) {
-                  p.cost(x1,x2) = std::numeric_limits<REAL>::infinity();
-               }
-            }
-         }
-      }
-   }
-
-   bool CheckPrimalConsistency() const // this function should not be needed, as gm model and mp model for graph matching have equality messages and mcf and hungarian have mcf factor which takes care of primal feasibility. Only enable in debug build
-   {
-      std::cout << "check assignment\n";
-      INDEX no_labels = 0;
-      for(auto&v : graph_) {
-         for(auto l : v) {
-            no_labels = std::max(no_labels, l);
-         }
-      }
-      ++no_labels;
-
-      std::vector<bool> labels_taken(no_labels,false);
-      for(INDEX i=0; i<this->unaryFactor_.size(); ++i) {
-         const INDEX state = this->unaryFactor_[i]->GetFactor()->primal(); 
-         if(state < graph_[i].size()) {
-            const INDEX label = graph_[i][state];
-            if(labels_taken[label]) { 
-               std::cout << "var " << i << ", state " << state << ", label " << label << " conflict\n";
-               return false; 
-            }
-            labels_taken[ label ] = true;
-         }
-      }
-
-      return true;
-   }
-
-   const std::vector<INDEX>& assignment_nodes(const INDEX i) const
-   {
-      assert(i<graph_.size());
-      return graph_[i];
-   }
-
-private:
-   std::vector<std::vector<INDEX>> graph_;
-
-};
-
 // derives from a given mrf problem constructor and adds tightening capabilities on top of it, as implemented in cycle_inequalities and proposed by David Sontag
 template<class MRF_PROBLEM_CONSTRUCTOR,
    INDEX TERNARY_FACTOR_NO, INDEX PAIRWISE_TRIPLET_MESSAGE12_NO, INDEX PAIRWISE_TRIPLET_MESSAGE13_NO, INDEX PAIRWISE_TRIPLET_MESSAGE23_NO> // the last indices indicate triplet factor and possible messages
-class TighteningMRFProblemConstructor : public MRF_PROBLEM_CONSTRUCTOR
+class tightening_mrf_constructor : public MRF_PROBLEM_CONSTRUCTOR
 {
 protected:
    using MRFPC = MRF_PROBLEM_CONSTRUCTOR;
    using FMC = typename MRFPC::FMC;
-   using MrfConstructorType = TighteningMRFProblemConstructor<MRFPC, TERNARY_FACTOR_NO, PAIRWISE_TRIPLET_MESSAGE12_NO, PAIRWISE_TRIPLET_MESSAGE13_NO, PAIRWISE_TRIPLET_MESSAGE23_NO>;
+   using MrfConstructorType = tightening_mrf_constructor<MRFPC, TERNARY_FACTOR_NO, PAIRWISE_TRIPLET_MESSAGE12_NO, PAIRWISE_TRIPLET_MESSAGE13_NO, PAIRWISE_TRIPLET_MESSAGE23_NO>;
 
    using TripletFactorContainer = meta::at_c<typename FMC::FactorList, TERNARY_FACTOR_NO>; 
    using TripletFactor = typename TripletFactorContainer::FactorType;
@@ -499,14 +397,14 @@ protected:
 
 public:
    template<typename SOLVER>
-   TighteningMRFProblemConstructor(SOLVER& pd)
+   tightening_mrf_constructor(SOLVER& pd)
       : MRF_PROBLEM_CONSTRUCTOR(pd)
    {}
 
-   TripletFactorContainer* AddTripletFactor(const INDEX var1, const INDEX var2, const INDEX var3, const std::vector<REAL>& cost)
+   TripletFactorContainer* add_triplet_factor(const INDEX var1, const INDEX var2, const INDEX var3, const std::vector<REAL>& cost)
    {
       assert(var1<var2 && var2<var3);
-      assert(var3<this->GetNumberOfVariables());
+      assert(var3<this->get_number_of_variables());
       assert(tripletMap_.find(std::array<INDEX,3>({var1,var2,var3})) == tripletMap_.end());
       
       assert(this->pairwiseMap_.find(std::make_tuple(var1,var2)) != this->pairwiseMap_.end());
@@ -517,7 +415,7 @@ public:
       const INDEX factor13Id = this->pairwiseMap_.find(std::make_tuple(var1,var3))->second;
       const INDEX factor23Id = this->pairwiseMap_.find(std::make_tuple(var2,var3))->second;
 
-      TripletFactorContainer* t = this->lp_->template add_factor<TripletFactorContainer>(this->GetNumberOfLabels(var1), this->GetNumberOfLabels(var2), this->GetNumberOfLabels(var3));
+      TripletFactorContainer* t = this->lp_->template add_factor<TripletFactorContainer>(this->get_number_of_labels(var1), this->get_number_of_labels(var2), this->get_number_of_labels(var3));
       tripletFactor_.push_back(t);
       tripletIndices_.push_back(std::array<INDEX,3>({var1,var2,var3}));
       const INDEX factorId = tripletFactor_.size()-1;
@@ -527,13 +425,13 @@ public:
       LinkPairwiseTripletFactor<PairwiseTripletMessage13Container>(factor13Id,factorId);
       LinkPairwiseTripletFactor<PairwiseTripletMessage23Container>(factor23Id,factorId); 
 
-      //this->lp_->ForwardPassFactorRelation(this->GetPairwiseFactor(factor12Id),t);
-      //this->lp_->ForwardPassFactorRelation(this->GetPairwiseFactor(factor13Id),t);
-      //this->lp_->ForwardPassFactorRelation(t,this->GetPairwiseFactor(factor23Id));
+      //this->lp_->ForwardPassFactorRelation(this->get_pairwise_factor(factor12Id),t);
+      //this->lp_->ForwardPassFactorRelation(this->get_pairwise_factor(factor13Id),t);
+      //this->lp_->ForwardPassFactorRelation(t,this->get_pairwise_factor(factor23Id));
 
-      //this->lp_->BackwardPassFactorRelation(this->GetPairwiseFactor(factor23Id),t);
-      //this->lp_->BackwardPassFactorRelation(this->GetPairwiseFactor(factor13Id),t);
-      //this->lp_->BackwardPassFactorRelation(t,this->GetPairwiseFactor(factor12Id));
+      //this->lp_->BackwardPassFactorRelation(this->get_pairwise_factor(factor23Id),t);
+      //this->lp_->BackwardPassFactorRelation(this->get_pairwise_factor(factor13Id),t);
+      //this->lp_->BackwardPassFactorRelation(t,this->get_pairwise_factor(factor12Id));
       return t;
    }
    template<typename PAIRWISE_TRIPLET_MESSAGE_CONTAINER>
@@ -545,54 +443,54 @@ public:
       const INDEX pairwiseVar1 = this->pairwiseIndices_[pairwiseFactorId][0];
       const INDEX pairwiseVar2 = this->pairwiseIndices_[pairwiseFactorId][1];
       assert(pairwiseVar1 < pairwiseVar2);
-      const INDEX pairwiseDim1 = this->GetNumberOfLabels(pairwiseVar1);
-      const INDEX pairwiseDim2 = this->GetNumberOfLabels(pairwiseVar2);
+      const INDEX pairwiseDim1 = this->get_number_of_labels(pairwiseVar1);
+      const INDEX pairwiseDim2 = this->get_number_of_labels(pairwiseVar2);
 
       TripletFactorContainer* const t = tripletFactor_[tripletFactorId];
       const INDEX tripletVar1 = tripletIndices_[tripletFactorId][0];
       const INDEX tripletVar2 = tripletIndices_[tripletFactorId][1];
       const INDEX tripletVar3 = tripletIndices_[tripletFactorId][2];
       assert(tripletVar1 < tripletVar2 && tripletVar2 < tripletVar3);
-      const INDEX tripletDim1 = this->GetNumberOfLabels(tripletVar1);
-      const INDEX tripletDim2 = this->GetNumberOfLabels(tripletVar2);
-      const INDEX tripletDim3 = this->GetNumberOfLabels(tripletVar3);
+      const INDEX tripletDim1 = this->get_number_of_labels(tripletVar1);
+      const INDEX tripletDim2 = this->get_number_of_labels(tripletVar2);
+      const INDEX tripletDim3 = this->get_number_of_labels(tripletVar3);
          
       assert(pairwiseDim1*pairwiseDim2 == p->GetFactor()->size());
 
       auto* m = this->lp_->template add_message<PAIRWISE_TRIPLET_MESSAGE_CONTAINER>(p, t, tripletDim1, tripletDim2, tripletDim3);
    }
-   INDEX GetNumberOfTripletFactors() const { return tripletFactor_.size(); }
+   INDEX get_number_of_triplet_factors() const { return tripletFactor_.size(); }
 
-   std::array<INDEX,3> GetTripletIndices(const INDEX factor_id)
+   std::array<INDEX,3> get_triplet_indices(const INDEX factor_id)
    {
-      assert(factor_id < GetNumberOfTripletFactors());
+      assert(factor_id < get_number_of_triplet_factors());
       return tripletIndices_[factor_id];
    }
 
-   void AddEmptyPairwiseFactor(const INDEX var1, const INDEX var2)
+   void add_empty_pairwise_factor(const INDEX var1, const INDEX var2)
    {
       assert(this->pairwiseMap_.find(std::make_tuple(var1,var2)) == this->pairwiseMap_.end()); 
-      this->AddPairwiseFactor(var1, var2, matrix<REAL>(this->GetNumberOfLabels(var1), this->GetNumberOfLabels(var2), 0));
+      this->add_pairwise_factor(var1, var2, matrix<REAL>(this->get_number_of_labels(var1), this->get_number_of_labels(var2), 0));
    }
 
    // do zrobienia: use references for pi
-   bool AddTighteningTriplet(const INDEX var1, const INDEX var2, const INDEX var3)//, const std::vector<INDEX> pi1, const std::vector<INDEX> pi2, const std::vector<INDEX> pi3)
+   bool add_tightening_triplet(const INDEX var1, const INDEX var2, const INDEX var3)//, const std::vector<INDEX> pi1, const std::vector<INDEX> pi2, const std::vector<INDEX> pi3)
    {
-      assert(var1 < var2 && var2 < var3 && var3 < this->GetNumberOfVariables());
+      assert(var1 < var2 && var2 < var3 && var3 < this->get_number_of_variables());
       if(tripletMap_.count(std::array<INDEX,3>({var1,var2,var3})) == 0) {
          // first check whether necessary pairwise factors are present. If not, add them.
          if(this->pairwiseMap_.find(std::make_tuple(var1,var2)) == this->pairwiseMap_.end()) {
-            AddEmptyPairwiseFactor(var1,var2);
+            add_empty_pairwise_factor(var1,var2);
          }
          if(this->pairwiseMap_.find(std::make_tuple(var1,var3)) == this->pairwiseMap_.end()) {
-            AddEmptyPairwiseFactor(var1,var3);
+            add_empty_pairwise_factor(var1,var3);
          }
          if(this->pairwiseMap_.find(std::make_tuple(var2,var3)) == this->pairwiseMap_.end()) {
-            AddEmptyPairwiseFactor(var2,var3);
+            add_empty_pairwise_factor(var2,var3);
          }
 
-         const INDEX tripletSize = this->GetNumberOfLabels(var1) *  this->GetNumberOfLabels(var2) * this->GetNumberOfLabels(var3);
-         AddTripletFactor(var1,var2,var3, std::vector<REAL>(tripletSize,0.0));
+         const auto tripletSize = this->get_number_of_labels(var1) *  this->get_number_of_labels(var2) * this->get_number_of_labels(var3);
+         add_triplet_factor(var1,var2,var3, std::vector<REAL>(tripletSize,0.0));
          return true;
       } else {
          return false;
@@ -603,7 +501,7 @@ public:
    {
       INDEX no_triplets_added = 0;
       for(auto t : tc) {
-         if(AddTighteningTriplet(t.i, t.j, t.k)) {
+         if(add_tightening_triplet(t.i, t.j, t.k)) {
             ++no_triplets_added;
             if(no_triplets_added >= max_triplets_to_add) {
                break;
@@ -620,7 +518,7 @@ public:
          std::cout << "Tighten mrf with cycle inequalities, no triplets to add = " << noTripletsToAdd << "\n";
       }
 
-      //auto fp = [this](const INDEX v1, const INDEX v2, const INDEX v3) { return this->AddTighteningTriplet(v1,v2,v3); }; // do zrobienia: do not give this via template, as Cycle already has gm_ object.
+      //auto fp = [this](const INDEX v1, const INDEX v2, const INDEX v3) { return this->add_tightening_triplet(v1,v2,v3); }; // do zrobienia: do not give this via template, as Cycle already has gm_ object.
 
       triplet_search<typename std::remove_reference<decltype(*this)>::type> triplets(*this, eps);
       if(debug()) { std::cout << "search for triplets\n"; }
@@ -713,307 +611,6 @@ protected:
    std::vector<std::array<INDEX,3>> tripletIndices_;
    std::map<std::array<INDEX,3>, INDEX> tripletMap_; // given two sorted indices, return factorId belonging to that index.
 };
-
-
-///////////////////////////////////////////////////////////////////
-//
-// input classes. Given an input (filename, string) construct factors 
-//
-///////////////////////////////////////////////////////////////////
-
-// file format described in http://www.cs.huji.ac.il/project/PASCAL/fileFormat.php
-namespace UaiMrfInput {
-
-   struct MrfInput {
-      INDEX number_of_variables_;
-      INDEX number_of_cliques_;
-      std::vector<INDEX> cardinality_;
-      std::vector<std::vector<INDEX>> clique_scopes_;
-      std::vector<std::vector<REAL>> function_tables_;
-   };
-
-   // import basic parsers
-   using Parsing::opt_whitespace;
-   using Parsing::mand_whitespace;
-   using Parsing::opt_invisible;
-   using Parsing::mand_invisible;
-   using Parsing::positive_integer;
-   using Parsing::real_number;
-
-
-   struct init_line : pegtl::seq< opt_whitespace, pegtl::string<'M','A','R','K','O','V'>, opt_whitespace > {};
-   struct number_of_variables : pegtl::seq< opt_whitespace, positive_integer, opt_whitespace > {};
-   // vector of integers denoting how many labels each variable has
-   struct cardinality : pegtl::seq< opt_whitespace, positive_integer, opt_whitespace > {};
-   struct number_of_cliques : pegtl::seq< opt_whitespace, positive_integer, opt_whitespace> {};
-   // first is the number of variables in the clique, then the actual variables.
-   // the clique_scopes should match number_of_clique_lines, each line consisting of a sequence of integers
-   struct new_clique_scope : pegtl::seq< positive_integer > {};
-   struct clique_scope : pegtl::seq< positive_integer > {};
-   struct clique_scope_line : pegtl::seq< opt_whitespace, new_clique_scope, pegtl::plus< opt_whitespace, clique_scope >, opt_whitespace, pegtl::eol > {};
-   struct clique_scopes_end
-   {
-      //template< pegtl::apply_mode A, pegtl::rewind_mode M, template< typename ... > class Action, template< typename ... > class Control, typename Input >
-      template< pegtl::apply_mode A, template< typename ... > class Action, template< typename ... > class Control, typename Input >
-         static bool match( Input &, MrfInput& input )
-         {
-            return input.number_of_cliques_ == input.clique_scopes_.size();
-         }
-   };
-   struct clique_scopes : pegtl::until< clique_scopes_end, clique_scope_line > {};
-   // a function table is begun by number of entries and then a list of real numbers. Here we record all the values in the real stack
-   // do zrobienia: treat whitespace
-   struct new_function_table : pegtl::seq< positive_integer > {};
-   struct function_table_entry : pegtl::seq< real_number > {};
-   struct function_tables_end
-   {
-      //template< pegtl::apply_mode A, pegtl::rewind_mode M, template< typename ... > class Action, template< typename ... > class Control, typename Input >
-      template< pegtl::apply_mode A, template< typename ... > class Action, template< typename ... > class Control, typename Input >
-         static bool match( Input &, MrfInput& input )
-         {
-            return input.number_of_cliques_ == input.function_tables_.size();
-         }
-   };
-   struct function_table_end
-   {
-      //template< pegtl::apply_mode A, pegtl::rewind_mode M, template< typename ... > class Action, template< typename ... > class Control, typename Input >
-      template< pegtl::apply_mode A, template< typename ... > class Action, template< typename ... > class Control, typename Input >
-         static bool match( Input &, MrfInput& input )
-         {
-            auto& table = input.function_tables_.back();
-            if(table.back() + 1 == table.size()) {
-               table.resize(table.size()-1); // remove last entry which holds the end size of the table
-               return true;
-            } else {
-               return false;
-            }
-         }
-   };
-   struct function_table : pegtl::seq< new_function_table, opt_invisible, pegtl::until< function_table_end, opt_invisible, function_table_entry >, opt_invisible > {};
-   struct function_tables : pegtl::seq< opt_invisible, pegtl::until< function_tables_end, function_table >, opt_invisible > {};//,pegtl::seq<pegtl::star<pegtl::sor<mand_whitespace, pegtl::eol>>, real_number, pegtl::plus<pegtl::star<pegtl::sor<mand_whitespace, pegtl::eol>>, real_number>> {};
-   //template<> struct control< function_table > : pegtl::change_state_and_action< function_table, ..., object_action > {};
-
-
-   struct grammar : pegtl::seq<
-                    init_line, pegtl::eol,
-                    number_of_variables, pegtl::eol,
-                    pegtl::plus< cardinality >, pegtl::eol,
-                    number_of_cliques, pegtl::eol,
-                    clique_scopes,
-                    opt_invisible,
-                    function_tables
-                   > {};
-
-
-   template< typename Rule >
-      struct action
-      : pegtl::nothing< Rule > {};
-
-   template<> struct action< number_of_variables > {
-      template<typename Input>
-      static void apply(const Input& in, MrfInput& input) 
-      {
-         input.number_of_variables_ = std::stoul(in.string());
-      }
-   };
-
-   template<> struct action< number_of_cliques > {
-      template<typename Input>
-      static void apply(const Input & in, MrfInput& input)
-      {
-         input.number_of_cliques_ = std::stoul(in.string()); 
-      }
-   };
-
-   template<> struct action< cardinality > {
-      template<typename Input>
-      static void apply(const Input & in, MrfInput& input)
-      {
-         input.cardinality_.push_back(std::stoul(in.string()));
-      }
-   };
-
-   template<> struct action< new_clique_scope > {
-      template<typename Input>
-      static void apply(const Input &, MrfInput& input)
-      {
-         input.clique_scopes_.push_back(std::vector<INDEX>(0));
-      }
-   };
-   template<> struct action< clique_scope > {
-      template<typename Input>
-      static void apply(const Input & in, MrfInput& input)
-      {
-         input.clique_scopes_.back().push_back(std::stoul(in.string()));
-         assert(input.clique_scopes_.back().back() < input.number_of_variables_);
-      }
-   };
-   template<> struct action< new_function_table > {
-      template<typename Input>
-      static void apply(const Input & in, MrfInput& input)
-      {
-         const INDEX no_entries = std::stoul(in.string());
-         std::vector<REAL> entries;
-         entries.reserve(no_entries+1);
-         entries.push_back(no_entries);
-         input.function_tables_.push_back(std::move(entries));
-      }
-   };
-   template<> struct action< function_table_entry > {
-      template<typename Input>
-      static void apply(const Input & in, MrfInput& input)
-      {
-         auto& table = input.function_tables_.back();
-         table.push_back(std::stod(in.string()));
-         std::swap(table.back(), *(table.rbegin()+1)); // exchange last element, which always denotes the final number of entries in the function table
-      }
-   };
-
-   template<typename MRF_CONSTRUCTOR>
-      void build_mrf(MRF_CONSTRUCTOR& mrf, const MrfInput& input)
-      {
-         assert(input.number_of_cliques_ == input.clique_scopes_.size());
-         assert(input.number_of_cliques_ == input.function_tables_.size());
-
-         // only unary and pairwise potentials supported right now
-         for(INDEX i=0; i<input.number_of_cliques_; ++i) {
-            assert(input.clique_scopes_[i].size() < 3);
-         }
-
-         // first input the unaries, as pairwise potentials need them to be able to link to them
-         // add unary factors with cost zero for each variables. There are models where unaries are not explicitly added.
-         for(INDEX i=0; i<input.number_of_variables_; ++i) {
-            const INDEX noLabels = input.cardinality_[i];
-            mrf.AddUnaryFactor(i,std::vector<REAL>(noLabels,0.0));
-         }
-
-         REAL initial_lb = 0.0;
-         for(INDEX i=0; i<input.number_of_cliques_; ++i) {
-            if(input.clique_scopes_[i].size() == 1) {
-               const INDEX var = input.clique_scopes_[i][0];
-               //std::cout << "unary potential for variable " << var << ":\n";
-               auto* f = mrf.GetUnaryFactor(var);
-               assert(input.function_tables_[i].size() == input.cardinality_[var]);
-               initial_lb += *std::min_element(input.function_tables_[i].begin(), input.function_tables_[i].end());
-               for(INDEX x=0; x<input.function_tables_[i].size(); ++x) {
-                  //std::cout << input.function_tables_[i][x] << " ";
-                  assert( (*f->GetFactor())[x] == 0.0);
-                  (*f->GetFactor())[x] = input.function_tables_[i][x];
-               }
-               //std::cout << "\n";
-            }
-         }
-
-         //std::cout << "initial lower bound unaries = " << initial_lb << "\n"; 
-
-         // now the pairwise potentials. 
-         for(INDEX i=0; i<input.number_of_cliques_; ++i) {
-            if(input.clique_scopes_[i].size() == 2) {
-               const INDEX var1 = input.clique_scopes_[i][0];
-               const INDEX var2 = input.clique_scopes_[i][1];
-               const INDEX dim1 = mrf.GetNumberOfLabels(var1);
-               const INDEX dim2 = mrf.GetNumberOfLabels(var2);
-               assert(var1<var2 && var2 < input.number_of_variables_);
-               assert(input.function_tables_[i].size() == input.cardinality_[var1]*input.cardinality_[var2]);
-               assert(input.function_tables_[i].size() == dim1*dim2);
-               matrix<REAL> pairwise_cost(dim1,dim2);
-               initial_lb += *std::min_element(input.function_tables_[i].begin(), input.function_tables_[i].end());
-               //std::cout << "pairwise potential on (" << var1 << "," << var2 << "):\n";
-               for(INDEX l1=0; l1<dim1; ++l1) {
-                  for(INDEX l2=0; l2<dim2; ++l2) {
-                     pairwise_cost(l1,l2) = input.function_tables_[i][l1*dim2 + l2];
-               //      std::cout << input.function_tables_[i][l1*dim2 + l2] << " ";
-                  }
-               //   std::cout << "\n";
-               }
-               //std::cout << pairwise_cost;
-               mrf.AddPairwiseFactor(var1,var2,pairwise_cost); // or do we have to transpose the values?
-            }
-         }
-
-         /*
-         initial_lb = 0.0;
-         for(INDEX i=0; i<input.number_of_cliques_; ++i) {
-            if(input.clique_scopes_[i].size() == 1) {
-               const INDEX var = input.clique_scopes_[i][0];
-               auto* f = mrf.GetUnaryFactor(var);
-               initial_lb += f->LowerBound();
-            }
-         }
-         std::cout << "initial lower bound unaries = " << initial_lb << "\n"; 
-
-         // now the pairwise potentials. 
-         for(INDEX i=0; i<input.number_of_cliques_; ++i) {
-            if(input.clique_scopes_[i].size() == 2) {
-               const INDEX var1 = input.clique_scopes_[i][0];
-               const INDEX var2 = input.clique_scopes_[i][1];
-               auto* f = mrf.GetPairwiseFactor(var1,var2);
-               initial_lb += f->LowerBound();
-            }
-         }
-
-         std::cout << "initial lower bound = " << initial_lb << "\n"; 
-         */
-      }
-
-
-   template<typename SOLVER, INDEX PROBLEM_CONSTRUCTOR_NO>
-   bool ParseString(const std::string& instance, SOLVER& s)
-   {
-      std::cout << "parsing string\n";
-      MrfInput input;
-      //bool read_suc = pegtl::parse_string<grammar, action>(instance,"",input);
-      bool read_suc = pegtl::parse<grammar, action>(instance,"",input);
-      if(read_suc) {
-         auto& mrf_constructor = s.template GetProblemConstructor<PROBLEM_CONSTRUCTOR_NO>();
-         build_mrf(mrf_constructor, input);
-      }
-      return read_suc;
-   }
-
-   template<typename SOLVER, INDEX PROBLEM_CONSTRUCTOR_NO>
-   bool ParseStringDD(const std::string& instance, SOLVER& s)
-   {
-      const bool success = ParseString<SOLVER,PROBLEM_CONSTRUCTOR_NO>(instance, s);
-      auto& mrf = s.template GetProblemConstructor<0>();
-      // decompose mrf into trees automatically.
-      auto trees = mrf.compute_forest_cover();
-      for(auto& tree : trees) {
-          s.GetLP().add_tree(tree);
-      }
-
-      return success;
-   }
-
-   template<typename SOLVER>
-   bool ParseProblem(const std::string& filename, SOLVER& s)
-   {
-      std::cout << "parsing " << filename << "\n";
-      pegtl::file_parser problem(filename);
-      MrfInput input;
-      bool read_suc = problem.parse< grammar, action >(input);
-      if(read_suc) {
-         auto& mrf_constructor = s.template GetProblemConstructor<0>();
-         build_mrf(mrf_constructor, input);
-      }
-      return read_suc;
-   }
-
-   template<typename SOLVER>
-   bool ParseProblemDD(const std::string& filename, SOLVER& s)
-   {
-     const bool success = ParseProblem(filename, s);
-     auto& mrf = s.template GetProblemConstructor<0>();
-     // decompose mrf into trees automatically.
-     auto trees = mrf.compute_forest_cover();
-     for(auto& tree : trees) {
-       s.GetLP().add_tree(tree);
-     }
-
-     return success;
-   }
-
-}
 
 } // end namespace LP_MP
 

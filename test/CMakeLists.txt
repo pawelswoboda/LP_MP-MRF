@@ -22,9 +22,9 @@ add_executable(mrf_tree mrf_tree.cpp)
 target_link_libraries(mrf_tree LP_MP-MRF m stdc++ pthread lingeling arboricity)
 add_test(mrf_tree mrf_tree)
 
-add_executable(mrf_uai_input mrf_uai_input.cpp)
-target_link_libraries(mrf_uai_input LP_MP-MRF m stdc++ pthread lingeling)
-add_test(mrf_uai_input mrf_uai_input)
+add_executable(mrf_read_uai_file mrf_read_uai_file.cpp)
+target_link_libraries(mrf_read_uai_file LP_MP-MRF m stdc++ pthread lingeling mrf_uai_input)
+add_test(mrf_read_uai_file mrf_read_uai_file)
 
 add_executable(mrf_sat_rounding mrf_sat_rounding.cpp)
 target_link_libraries(mrf_sat_rounding LP_MP-MRF m stdc++ pthread lingeling)

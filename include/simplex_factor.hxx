@@ -19,8 +19,14 @@ namespace LP_MP {
 
 class UnarySimplexFactor : public vector<REAL> {
 public:
-   UnarySimplexFactor(const std::vector<REAL>& cost) : vector<REAL>(cost.begin(), cost.end()) {}
-   UnarySimplexFactor(const INDEX n) : vector<REAL>(n, 0.0) {}
+    using vector<REAL>::vector;
+
+    template<typename VECTOR>
+    UnarySimplexFactor(const VECTOR& vec)
+    : vector(vec.size())
+    {
+        for(std::size_t i=0; i<vec.size(); ++i) { (*this)[i] = vec[i]; }
+    }
 
    void print_potential()
    {
@@ -888,6 +894,7 @@ protected:
    std::array<INDEX,2> primal_;
 
 };
+
 } // end namespace LP_MP
 
 #endif // LP_MP_SIMPLEX_FACTOR_HXX

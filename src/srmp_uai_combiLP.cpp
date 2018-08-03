@@ -3,10 +3,10 @@
 #include "combiLP.hxx"
 #include "gurobi_interface.hxx"
 #include "visitors/standard_visitor.hxx"
+#include "mrf_uai_input.h"
 
 using namespace LP_MP;
 int main(int argc, char** argv) {
 MpRoundingSolver<Solver<combiLP<DD_ILP::gurobi_interface, LP<FMC_SRMP>>,StandardVisitor>> solver(argc,argv);
-solver.ReadProblem(UaiMrfInput::ParseProblem<Solver<combiLP<DD_ILP::gurobi_interface, LP<FMC_SRMP>>,StandardVisitor>>);
-return solver.Solve();
+auto input = mrf_uai_input::parse_file(solver.get_input_file());solver.template GetProblemConstructor<0>().construct(input);return solver.Solve();
 }
