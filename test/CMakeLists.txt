@@ -15,7 +15,7 @@ target_link_libraries(cycle_inequalities LP_MP-MRF m stdc++ pthread lingeling)
 add_test(cycle_inequalities cycle_inequalities)
 
 add_executable(mrf_tree_decomposition mrf_tree_decomposition.cpp)
-target_link_libraries(mrf_tree_decomposition LP_MP-MRF m stdc++ pthread lingeling FW-MAP arboricity CONIC_BUNDLE)
+target_link_libraries(mrf_tree_decomposition LP_MP-MRF m stdc++ pthread lingeling FW-MAP arboricity cb)
 add_test(mrf_tree_decomposition mrf_tree_decomposition)
 
 add_executable(mrf_tree mrf_tree.cpp)
