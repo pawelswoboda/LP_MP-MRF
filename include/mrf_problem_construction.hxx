@@ -291,7 +291,7 @@ public:
 
   std::vector<factor_tree<FMC>> compute_forest_cover(const std::vector<std::array<INDEX,2>>& pairwiseIndices)
   {
-     UndirectedGraph g = UndirectedGraph(unaryFactor_.size(), pairwiseFactor_.size());
+     UndirectedGraph g(unaryFactor_.size(), pairwiseFactor_.size());
      for(auto e : pairwiseIndices) {
         const auto i = e[0];
         const auto j = e[1];
@@ -306,7 +306,7 @@ public:
      for(INDEX k=0; k<forest_num; ++k) {
         g.GetForestParents(k, parents.data()); // possible GetForestEdges will return pairwise ids, hence get_pairwise_factor(id) then can be called, which is faster
 
-        UnionFind uf(unaryFactor_.size());
+        union_find uf(unaryFactor_.size());
         for(INDEX i=0; i<parents.size(); ++i) {
            if(parents[i] != -1) {
               uf.merge(i, parents[i]);
