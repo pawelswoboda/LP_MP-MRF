@@ -45,6 +45,11 @@ public:
    {
       auto* u = lp_->template add_factor<UnaryFactorContainer>(cost_begin, cost_end);
       unaryFactor_.push_back(u);
+
+      if(unaryFactor_.size() > 1) {
+         lp_->AddFactorRelation(unaryFactor_[unaryFactor_.size()-2], u);
+      } 
+
       return u; 
 
    }
@@ -85,6 +90,9 @@ public:
 
       lp_->template add_message<LeftMessageContainer>(this->get_unary_factor(var1), p);
       lp_->template add_message<RightMessageContainer>(this->get_unary_factor(var2), p);
+
+      lp_->AddFactorRelation(unaryFactor_[var1], p);
+      lp_->AddFactorRelation(p, unaryFactor_[var2]);
 
       return p;
    }
@@ -158,16 +166,6 @@ public:
             assert(*it != nullptr);
             lp_->AddFactorRelation(*it,*(it+1));
          }
-      }
-
-      for(std::size_t p=0; p<get_number_of_pairwise_factors(); ++p) {
-          const auto [i,j] = get_pairwise_variables(p);
-          assert(i<j);
-          auto* f_i = get_unary_factor(i);
-          auto* f_j = get_unary_factor(j);
-          auto* f_p = get_pairwise_factor(p);
-          lp_->AddFactorRelation(f_i, f_p);
-          lp_->AddFactorRelation(f_p, f_j);
       }
 
       assert(pairwiseIndices_.size() == pairwiseFactor_.size());
@@ -367,6 +365,8 @@ public:
           this->add_pairwise_factor(var1,var2, pairwise_cost);
       }
   }
+
+  LP<FMC>* get_lp() const { return lp_; }
 
 protected:
    std::vector<UnaryFactorContainer*> unaryFactor_;
