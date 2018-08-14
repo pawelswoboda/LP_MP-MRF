@@ -15,9 +15,10 @@ namespace LP_MP {
 
        std::size_t no_variables() const { return unaries.size(); }
        std::size_t cardinality(const std::size_t i) const { assert(i<no_variables()); return unaries[i].size(); }
-       std::size_t no_pairwise_factors() const { pairwise_indices.size(); }
+       std::size_t no_pairwise_factors() const { return pairwise_indices.size(); }
        auto get_unary(const std::size_t i) const { assert(i<no_variables()); return unaries[i]; }
-       auto get_pairwise(const std::size_t i) const { assert(i<no_pairwise_factors()); return; }
+       std::array<std::size_t,2> get_pairwise_variables(const std::size_t i) const { assert(i<no_pairwise_factors()); return pairwise_indices[i]; }
+       auto get_pairwise_potential(const std::size_t i) const { assert(i<no_pairwise_factors()); return pairwise_values[i]; }
    };
 
 } // namespace LP_MP

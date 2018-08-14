@@ -2,8 +2,6 @@
 #define LP_MP_MRF_UAI_INPUT_H
 
 #include "mrf_input.h"
-#include "parse_rules.h"
-#include "pegtl/parse.hh"
 
 #include <string>
 #include <cassert>
@@ -15,7 +13,6 @@ namespace mrf_uai_input {
 
    mrf_input parse_file(const std::string& filename);
    mrf_input parse_string(const std::string& filename);
-
 /*
 
 
