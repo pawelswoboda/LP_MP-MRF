@@ -368,6 +368,8 @@ public:
       }
   }
 
+  LP<FMC>* get_lp() const { return lp_; }
+
 protected:
    std::vector<UnaryFactorContainer*> unaryFactor_;
    std::vector<PairwiseFactorContainer*> pairwiseFactor_;
