@@ -46,13 +46,29 @@ public:
       auto* u = lp_->template add_factor<UnaryFactorContainer>(cost_begin, cost_end);
       unaryFactor_.push_back(u);
       return u; 
-
-   }
+    
+    }
 
    template<typename VECTOR>
    UnaryFactorContainer* add_unary_factor(const VECTOR& cost)
    {
        return add_unary_factor(cost.begin(), cost.end());
+   }
+
+   template<typename ITERATOR>
+   UnaryFactorContainer* add_unary_factor_without_relation(ITERATOR cost_begin, ITERATOR cost_end)
+   {
+      auto* u = lp_->template add_factor<UnaryFactorContainer>(cost_begin, cost_end);
+      unaryFactor_.push_back(u);
+
+      return u; 
+   }
+
+
+   void add_unary_unary_relation(std::size_t unary1, std::size_t unary2)
+   {
+       assert(fmax(unary1, unary2) <= unaryFactor_.size() - 1);
+       lp_->AddFactorRelation(unaryFactor_[unary1], unaryFactor_[unary2]);
    }
    
    // unary factor was created elsewhere, let mrf know it
@@ -87,6 +103,35 @@ public:
       lp_->template add_message<RightMessageContainer>(this->get_unary_factor(var2), p);
 
       return p;
+   }
+
+   template<typename MATRIX>
+   PairwiseFactorContainer* add_pairwise_factor_without_relation(const std::size_t var1, const std::size_t var2, const MATRIX& cost)
+   { 
+      assert(var1<var2);
+      assert(!has_pairwise_factor(var1,var2));
+      auto* p = lp_->template add_factor<PairwiseFactorContainer>(get_number_of_labels(var1), get_number_of_labels(var2));
+      for(std::size_t i=0; i<get_number_of_labels(var1); ++i) {
+          for(std::size_t j=0; j<get_number_of_labels(var2); ++j) {
+              p->GetFactor()->cost(i,j) = cost(i,j);
+          }
+      }
+      pairwiseFactor_.push_back(p);
+      pairwiseIndices_.push_back(std::array<INDEX,2>({var1,var2}));
+      const INDEX factorId = pairwiseFactor_.size()-1;
+      pairwiseMap_.insert(std::make_pair(std::make_tuple(var1,var2), factorId));
+
+      lp_->template add_message<LeftMessageContainer>(this->get_unary_factor(var1), p);
+      lp_->template add_message<RightMessageContainer>(this->get_unary_factor(var2), p);
+
+      return p;
+   }
+
+   void add_unary_pairwise_relation(const std::size_t var1, const std::size_t var2)
+   {
+      auto* p = get_pairwise_factor(fmin(var1, var2), fmax(var1, var2));
+      lp_->AddFactorRelation(unaryFactor_[var1], p);
+      lp_->AddFactorRelation(p, unaryFactor_[var2]);
    }
 
    UnaryFactorContainer* get_unary_factor(const INDEX i) const { assert(i<unaryFactor_.size()); return unaryFactor_[i]; }
